@@ -1,4 +1,4 @@
-import {BindingKey, CoreBindings} from "@loopback/core";
+import { BindingKey, CoreBindings } from "@loopback/core";
 
 export namespace SharedBindings {
   /**

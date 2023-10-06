@@ -1,4 +1,4 @@
-import {BindingAddress, BindingKey, CoreBindings} from "@loopback/core";
+import { BindingAddress, BindingKey, CoreBindings } from "@loopback/core";
 import {
   AmqBusOptions,
   AmqBusProducer,
@@ -11,7 +11,7 @@ import {
   ErrorHandler,
   ResponseBuilder,
 } from "./lib";
-import {AmqConnector, AmqMessage} from "./lib/amq-connector";
+import { AmqConnector, AmqMessage } from "./lib/amq-connector";
 
 const keyComponent = `${CoreBindings.COMPONENTS}.AmqBusComponent`;
 /**
