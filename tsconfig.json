@@ -1,0 +1,9 @@
+{
+  "include": ["src/**/*"],
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true
+  }
+}
