@@ -1,9 +1,12 @@
 {
   "include": ["src/**/*"],
   "compilerOptions": {
-    "outDir": "dist",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "target": "es2018",
     "declaration": true,
     "esModuleInterop": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "outDir": "dist"
   }
 }
