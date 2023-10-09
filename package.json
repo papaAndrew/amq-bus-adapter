@@ -1,6 +1,6 @@
 {
   "name": "@papa_andrew/amq-bus-adapter",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Apache ActiveMq Connector component for Loopback4 applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,8 +15,8 @@
   },
   "keywords": [
     "loopback4",
-    "openapi",
-    "logging"
+    "ActiveMq",
+    "AMQP"
   ],
   "author": "papaAndrew",
   "license": "ISC",
