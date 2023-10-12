@@ -1,9 +1,9 @@
-import { BindingScope, Setter, inject, injectable } from "@loopback/core";
-import { AmqBusBindings } from "../keys";
-import { SharedBindings } from "../shared-keys";
-import { AmqLogAdapter, Amqbus, XrequestId } from "./types";
+import {BindingScope, Setter, inject, injectable} from "@loopback/core";
+import {AmqBusBindings} from "../keys";
+import {SharedBindings} from '../shared-keys';
+import {AmqLogAdapter, Amqbus, XrequestId} from "./types";
 
-@injectable({ scope: BindingScope.REQUEST })
+@injectable({scope: BindingScope.REQUEST})
 export class ConsumerRequest implements Amqbus.Request {
   readonly name?: string;
 
@@ -22,10 +22,10 @@ export class ConsumerRequest implements Amqbus.Request {
     protected requestIdSetter: Setter<XrequestId>,
     @inject(AmqBusBindings.Consumer.OPTIONS)
     readonly options: Amqbus.ConsumeOptions,
-    @inject(AmqBusBindings.LOG_ADAPTER, { optional: true })
+    @inject(AmqBusBindings.LOG_ADAPTER, {optional: true})
     public loqAdapter?: AmqLogAdapter,
   ) {
-    const { name, inputQueue } = options;
+    const {name, inputQueue} = options;
     this.name = name;
     this.inputQueue = inputQueue;
   }
@@ -35,7 +35,7 @@ export class ConsumerRequest implements Amqbus.Request {
   }
 
   public receive(incomingMessage: Amqbus.IncomingMessage) {
-    const { data, messageId, correlationId } = incomingMessage;
+    const {data, messageId, correlationId} = incomingMessage;
     this.messageId = messageId;
     this.requestBody = data;
     this.correlationId = correlationId;

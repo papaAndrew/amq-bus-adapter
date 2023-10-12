@@ -1,5 +1,5 @@
-import { BindingScope, inject, injectable } from "@loopback/core";
-import { exit } from "process";
+import {BindingScope, inject, injectable} from "@loopback/core";
+import {exit} from 'process';
 import {
   Connection,
   Delivery,
@@ -8,10 +8,10 @@ import {
   ReceiverOptions,
   filter,
 } from "rhea";
-import { AmqBusBindings } from "../keys";
-import { Amqbus } from "../lib";
-import { AmqConnector, AmqMessage } from "./amq-connector";
-import { genUuid4, rheaToAmqMessage, waitFor } from "./tools";
+import {AmqBusBindings} from "../keys";
+import {Amqbus} from "../lib";
+import {AmqConnector, AmqMessage} from "./amq-connector";
+import {genUuid4, rheaToAmqMessage, waitFor} from "./tools";
 
 /**
  *
@@ -22,7 +22,7 @@ const DEFAULT_TIMEOUT = 60000;
  */
 const DEFAULT_INTERVAL = 1;
 
-@injectable({ scope: BindingScope.TRANSIENT })
+@injectable({scope: BindingScope.TRANSIENT})
 export class AmqBusConsumer implements Amqbus.Consumer {
   private receiver?: Receiver;
 
@@ -37,10 +37,10 @@ export class AmqBusConsumer implements Amqbus.Consumer {
     protected context: Amqbus.ConsumerContext,
     @inject(AmqBusBindings.FATAL_ERROR_HANDLER)
     protected errorHandler: (err?: any) => void,
-  ) {}
+  ) { }
 
   private getConnection(): Connection {
-    const { connection } = this.connector;
+    const {connection} = this.connector;
     if (connection) {
       return connection;
     }
@@ -105,7 +105,7 @@ export class AmqBusConsumer implements Amqbus.Consumer {
     queue: string,
     outcomingMessage: Amqbus.OutcomingMessage,
   ) {
-    const { correlationId, data, messageId } = outcomingMessage;
+    const {correlationId, data, messageId} = outcomingMessage;
     const message: Message = {
       message_id: messageId ?? genUuid4(),
       correlation_id: correlationId,
