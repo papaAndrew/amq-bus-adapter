@@ -10,13 +10,13 @@ import {
 } from "./types";
 
 /**
- *
+ * Timeout awaiting response
  */
 const DEFAULT_TIMEOUT = 60000;
 /**
- *
+ * Response polling interval
  */
-const DEFAULT_INTERVAL = 2000;
+const DEFAULT_INTERVAL = 1;
 
 export class ProducerClient implements AmqBusProducer {
   private timeout: number = DEFAULT_TIMEOUT;

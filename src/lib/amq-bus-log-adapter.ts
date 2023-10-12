@@ -9,8 +9,14 @@ import {
 const HIDDEN_ALTERNATE = "{*hidden}";
 const EMPTY_ALTERNATE = "{*empty}";
 
+export type LogAdapterOptions = {
+  level?: string;
+  showBody?: boolean | string;
+  logInvocation?: boolean | string;
+};
+
 export interface ApiLogAdapter {
-  logMode: string;
+  options: LogAdapterOptions;
   level: string;
   sender: string;
   contextId?: string;
@@ -31,7 +37,8 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     if (this.apiLogAdapter) {
       this.apiLogAdapter.sender = AmqBusLogAdapter.name;
       this.apiLogAdapter.level = "http";
-      this.showContent = this.apiLogAdapter.logMode === "content";
+      const { showBody } = this.apiLogAdapter.options;
+      this.showContent = showBody === true || showBody === "true";
     }
   }
   onConnect(metadata: object) {
