@@ -1,6 +1,6 @@
-import {Connection, Delivery, Message, ReceiverOptions, filter} from "rhea";
-import {AmqConnector} from "./amq-connector";
-import {genUuid4, rheaToAmqMessage, waitFor} from "./tools";
+import { Connection, Delivery, Message, ReceiverOptions, filter } from "rhea";
+import { AmqConnector } from "./amq-connector";
+import { genUuid4, rheaToAmqMessage, waitFor } from "./tools";
 import {
   AmqBusProducer,
   AmqBusRouteOptions,
@@ -30,14 +30,14 @@ export class ProducerClient implements AmqBusProducer {
   }
 
   protected getConnection(): Connection {
-    const {connection} = this.connector;
+    const { connection } = this.connector;
     if (connection) {
       return connection;
     }
     throw new Error(`Connection ${typeof connection}`);
   }
   protected getOutgoingQueue(): string {
-    const {outputQueue} = this.options;
+    const { outputQueue } = this.options;
     if (outputQueue) {
       return outputQueue;
     }
@@ -58,7 +58,7 @@ export class ProducerClient implements AmqBusProducer {
     requestBody: string,
     correlationId?: string,
   ): Promise<Amqbus.OutcomingMessage> {
-    const {logAdapter, options} = this;
+    const { logAdapter, options } = this;
     const queue: string = this.getOutgoingQueue();
 
     const message: Message = {
@@ -104,7 +104,7 @@ export class ProducerClient implements AmqBusProducer {
   }
 
   async replyTo(address: string, correlationId: string): Promise<AmqMessage> {
-    const {logAdapter, options} = this;
+    const { logAdapter, options } = this;
     const rcvOpts: ReceiverOptions = {
       source: {
         address,
@@ -121,7 +121,7 @@ export class ProducerClient implements AmqBusProducer {
         result = rheaToAmqMessage<AmqMessage>(message);
         resolve();
       });
-      receiver.on("receiver_error", ({receiver}) => {
+      receiver.on("receiver_error", ({ receiver }) => {
         const error =
           receiver.error ??
           new Error(`Receiver 'receiver_error' event occured`);
@@ -152,7 +152,7 @@ export class ProducerClient implements AmqBusProducer {
    * @param requestBody
    */
   async requestReply(requestBody: string): Promise<AmqMessage> {
-    const {inputQueue} = this.options;
+    const { inputQueue } = this.options;
     if (inputQueue) {
       return this.notify(requestBody).then((amqMessage) =>
         this.replyTo(

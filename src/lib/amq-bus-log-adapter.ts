@@ -1,4 +1,4 @@
-import {BindingScope, injectable} from "@loopback/core";
+import { BindingScope, injectable } from "@loopback/core";
 import {
   AmqBusRouteOptions,
   AmqConnectorOptions,
@@ -37,28 +37,28 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     if (this.apiLogAdapter) {
       this.apiLogAdapter.sender = AmqBusLogAdapter.name;
       this.apiLogAdapter.level = "http";
-      const {showBody} = this.apiLogAdapter.options;
+      const { showBody } = this.apiLogAdapter.options;
       this.showContent = showBody === true || showBody === "true";
     }
   }
   onConnect(metadata: object) {
     const eventName = "AmqBusConnected";
     const message = "AMQ Connector connected";
-    const {ca, ...config} = (<any>metadata)
+    const { ca, ...config } = (<any>metadata)
       .connectionOptions as AmqConnectorOptions;
-    this.apiLogAdapter?.info(eventName, message, {config});
+    this.apiLogAdapter?.info(eventName, message, { config });
   }
 
   onDisconnect(metadata: object) {
     const eventName = "AmqBusDisconnected";
     const message = "AMQ Connector disconnected";
-    this.apiLogAdapter?.info(eventName, message, {metadata});
+    this.apiLogAdapter?.info(eventName, message, { metadata });
   }
 
   onConsumerOpen(metadata: object) {
     const eventName = "AmqConsumerOpen";
     const message = "AMQ Consumer opened";
-    this.apiLogAdapter?.info(eventName, message, {metadata});
+    this.apiLogAdapter?.info(eventName, message, { metadata });
   }
 
   protected printData(eventName: string, message: string, data: any) {
@@ -81,7 +81,7 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
   }
 
   protected toMetaData(options: AmqBusRouteOptions, message: AmqMessage) {
-    const {messageId, correlationId} = message;
+    const { messageId, correlationId } = message;
     const request = {
       ...options,
       messageId,
@@ -95,9 +95,9 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const baseMessage = "Incoming AMQ request";
 
     const request = this.toMetaData(options, message);
-    this.printMetaData(eventName, `${baseMessage} RECIEVED`, {request});
+    this.printMetaData(eventName, `${baseMessage} RECIEVED`, { request });
 
-    const {data} = message ?? {};
+    const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
   }
 
@@ -106,9 +106,9 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const baseMessage = "Incoming AMQ request response";
 
     const response = this.toMetaData(options, message);
-    this.printMetaData(eventName, `${baseMessage} REPLY`, {response});
+    this.printMetaData(eventName, `${baseMessage} REPLY`, { response });
 
-    const {data} = message ?? {};
+    const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
   }
 
@@ -117,9 +117,9 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const baseMessage = "Incoming AMQ request backout";
 
     const backout = this.toMetaData(options, message);
-    this.printMetaData(eventName, `${baseMessage} REPLY`, {backout});
+    this.printMetaData(eventName, `${baseMessage} REPLY`, { backout });
 
-    const {data} = message ?? {};
+    const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
   }
 
@@ -128,9 +128,9 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const baseMessage = "Outcoming AMQ request";
 
     const request = this.toMetaData(options, message);
-    this.printMetaData(eventName, `${baseMessage} SENT`, {request});
+    this.printMetaData(eventName, `${baseMessage} SENT`, { request });
 
-    const {data} = message ?? {};
+    const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
   }
 
@@ -139,9 +139,9 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const baseMessage = "Outcoming AMQ request response";
 
     const response = this.toMetaData(options, message);
-    this.printMetaData(eventName, `${baseMessage} RECEIVED`, {response});
+    this.printMetaData(eventName, `${baseMessage} RECEIVED`, { response });
 
-    const {data} = message ?? {};
+    const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
   }
 
@@ -151,6 +151,6 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
       cause: err.message,
       stack: err.stack,
     };
-    this.printMetaData(eventName, message, {error_description});
+    this.printMetaData(eventName, message, { error_description });
   }
 }
