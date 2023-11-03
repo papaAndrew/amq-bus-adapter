@@ -12,10 +12,10 @@ export class RouteConfigProvider implements Provider<AmqBusRouteOptions> {
   private routes: AmqBusRouteOptions | AmqBusRouteOptions[] | undefined;
 
   constructor(
-    @inject(RestBindings.Http.REQUEST)
-    httpRequest: Request,
     @inject(AmqBusBindings.CONFIG)
     options: AmqBusOptions,
+    @inject(RestBindings.Http.REQUEST, { optional: true })
+    httpRequest?: Request,
   ) {
     this.path = httpRequest.path;
     this.routes = options.producer;
