@@ -1,38 +1,48 @@
 import { BindingScope, Provider, inject, injectable } from "@loopback/core";
-import { Request, RestBindings } from "@loopback/rest";
+import { Request, RestBindings, RestRouter } from "@loopback/rest";
 import { AmqBusBindings } from "../keys";
 import { AmqBusOptions, AmqBusRouteOptions } from "../lib";
+
+// export type RouteConfigFactory = (alias: string) => AmqBusRouteOptions | undefined;
+// export type RouteConfigMap = Record<string, AmqBusRouteOptions>;
+export type RouteConfig = AmqBusRouteOptions;
 
 @injectable({
   scope: BindingScope.REQUEST,
 })
-export class RouteConfigProvider implements Provider<AmqBusRouteOptions> {
-  private path: string;
-
-  private routes: AmqBusRouteOptions | AmqBusRouteOptions[] | undefined;
-
+export class RouteConfigProvider implements Provider<RouteConfig> {
   constructor(
     @inject(AmqBusBindings.CONFIG)
-    options: AmqBusOptions,
+    private options: AmqBusOptions,
     @inject(RestBindings.Http.REQUEST, { optional: true })
-    httpRequest?: Request,
-  ) {
-    this.path = httpRequest.path;
-    this.routes = options.producer;
+    private httpRequest?: Request,
+    @inject(RestBindings.ROUTER, { optional: true })
+    private router?: RestRouter,
+  ) {}
+
+  private isRouteProducer(route: AmqBusRouteOptions) {
+    const { router, httpRequest } = this;
+    const { path } = route;
+    if (path && httpRequest) {
+      const resolvedRoute = router.find(httpRequest);
+      return resolvedRoute.path === path;
+    }
   }
 
   value(): AmqBusRouteOptions {
-    const { path, routes } = this;
-    let result: AmqBusRouteOptions | undefined;
+    const { producer: routes } = this.options;
+    let result: AmqBusRouteOptions;
 
     if (Array.isArray(routes)) {
-      result = routes.find((route) => route.name === path);
+      result =
+        routes.find((route) => this.isRouteProducer(route)) ??
+        routes.find((route) => !route.path);
     } else {
       result = routes;
     }
     if (result) {
       return result;
     }
-    throw new Error(`Route config not found for path '${path}'`);
+    throw new Error(`Route config not found`);
   }
 }

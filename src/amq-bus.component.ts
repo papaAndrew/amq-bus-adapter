@@ -93,11 +93,10 @@ export class AmqBusComponent implements Component, LifeCycleObserver {
     const cfgs = Array.isArray(options) ? options : [options];
 
     const tasks: Promise<void>[] = cfgs.map(async (cfg, i) => {
-      const { name, backoutQueue, timeout } = cfg;
+      const { name, timeout } = cfg;
       const opts = {
         ...cfg,
         name: name ?? `Consumer_${i}`,
-        backoutQueue: backoutQueue ?? this.options.backoutQueue,
         timeout: timeout ?? this.timeout,
       } as Amqbus.ConsumeOptions;
       await this.openConsumer(opts);
