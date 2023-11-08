@@ -14,10 +14,10 @@ export interface AmqConnectorOptions {
 
 export interface AmqBusRouteOptions {
   name?: string | undefined;
+  path?: string | undefined;
   timeout?: number;
   inputQueue?: string | undefined;
   outputQueue?: string | undefined;
-  backoutQueue?: string | undefined;
 }
 
 /**
@@ -30,6 +30,8 @@ export interface AmqBusOptions {
   consumer?: AmqBusRouteOptions | AmqBusRouteOptions[];
   producer?: AmqBusRouteOptions | AmqBusRouteOptions[];
 }
+
+// export type RouteConfigMap = Record<string, AmqBusRouteOptions>;
 
 /**
  * ResponseBuilder
@@ -76,6 +78,7 @@ export interface AmqLogAdapter {
  *
  */
 export interface AmqBusRequest {
+  inputQueue: string;
   messageId: string;
   correlationId?: string;
 }
