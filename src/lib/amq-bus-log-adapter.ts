@@ -1,10 +1,10 @@
-import { BindingScope, injectable } from "@loopback/core";
+import { injectable } from "@loopback/core";
 import {
   AmqBusRouteOptions,
   AmqConnectorOptions,
   AmqLogAdapter,
   AmqMessage,
-} from "../lib";
+} from "./types";
 
 const HIDDEN_ALTERNATE = "{*hidden}";
 const EMPTY_ALTERNATE = "{*empty}";
@@ -27,9 +27,7 @@ export interface ApiLogAdapter {
   http(eventName: string, message: string, args: object): void;
 }
 
-@injectable({
-  scope: BindingScope.TRANSIENT,
-})
+@injectable()
 export class AmqBusLogAdapter implements AmqLogAdapter {
   showContent = false;
 

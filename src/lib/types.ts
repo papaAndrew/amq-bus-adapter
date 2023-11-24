@@ -127,8 +127,8 @@ export namespace Amqbus {
 
   export type SendResponseFunction = (amqMessage: AmqMessage) => Promise<void>;
 
-  export interface ConsumerContext {
-    build(
+  export interface ConsumerContext extends AmqBusRequestContext {
+    consume(
       options: AmqBusRouteOptions,
       requestMessage: AmqMessage,
       onResponse: SendResponseFunction,

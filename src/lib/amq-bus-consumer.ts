@@ -1,4 +1,4 @@
-import { BindingScope, inject, injectable } from "@loopback/core";
+import { Context, inject, injectable } from "@loopback/core";
 import { exit } from "process";
 import {
   Connection,
@@ -8,10 +8,10 @@ import {
   ReceiverOptions,
   filter,
 } from "rhea";
-import { AmqBusBindings } from "../keys";
-import { Amqbus } from "../lib";
 import { AmqConnector, AmqMessage } from "./amq-connector";
-import { genUuid4, rheaToAmqMessage, waitFor } from "./tools";
+import { AmqBusBindings } from "./keys";
+import { createMessage, rheaToAmqMessage, waitFor } from "./tools";
+import { Amqbus } from "./types";
 
 /**
  *
@@ -22,7 +22,7 @@ const DEFAULT_TIMEOUT = 60000;
  */
 const DEFAULT_INTERVAL = 1;
 
-@injectable({ scope: BindingScope.TRANSIENT })
+@injectable()
 export class AmqBusConsumer implements Amqbus.Consumer {
   private receiver?: Receiver;
 
@@ -31,10 +31,10 @@ export class AmqBusConsumer implements Amqbus.Consumer {
   private timeout: number = DEFAULT_TIMEOUT;
 
   constructor(
+    @inject.context()
+    protected parentContext: Context,
     @inject(AmqBusBindings.CONNECTOR)
     protected connector: AmqConnector,
-    @inject(AmqBusBindings.Consumer.CONTEXT)
-    protected context: Amqbus.ConsumerContext,
     @inject(AmqBusBindings.FATAL_ERROR_HANDLER)
     protected errorHandler: (err?: any) => void,
   ) {}
@@ -47,9 +47,16 @@ export class AmqBusConsumer implements Amqbus.Consumer {
     throw new Error(`Connection ${typeof connection}`);
   }
 
+  private createContext(): Amqbus.ConsumerContext {
+    const context = this.parentContext.getSync(AmqBusBindings.Consumer.CONTEXT);
+    return context as Amqbus.ConsumerContext;
+  }
+
   private received(options: Amqbus.ConsumeOptions, message: Message) {
-    const amqMessage: AmqMessage = rheaToAmqMessage(message);
-    this.context.build(options, amqMessage, this.send.bind(this));
+    const amqMessage = rheaToAmqMessage<Amqbus.IncomingMessage>(message);
+    const context = this.createContext();
+    const onResponse = this.send.bind(this);
+    context.consume(options, amqMessage, onResponse);
   }
 
   public open(options: Amqbus.ConsumeOptions) {
@@ -76,7 +83,7 @@ export class AmqBusConsumer implements Amqbus.Consumer {
         const error = receiver.error ?? new Error(`Receiver unknown error`);
         this.errorHandler(error);
       } else {
-        console.log("exit 1");
+        console.log("errorHandler not found, exit 1");
         exit(1);
       }
     });
@@ -106,11 +113,7 @@ export class AmqBusConsumer implements Amqbus.Consumer {
     outcomingMessage: Amqbus.OutcomingMessage,
   ) {
     const { correlationId, data, messageId } = outcomingMessage;
-    const message: Message = {
-      message_id: messageId ?? genUuid4(),
-      correlation_id: correlationId,
-      body: data,
-    };
+    const message = createMessage(data, messageId)(correlationId);
 
     const connection = this.getConnection();
     const sender = connection.open_sender(queue);
