@@ -1,6 +1,7 @@
 import {
   Application,
   Binding,
+  BindingScope,
   Component,
   config,
   ContextTags,
@@ -9,18 +10,18 @@ import {
   injectable,
   LifeCycleObserver,
 } from "@loopback/core";
-import { AmqBusBindings } from "./keys";
+import { AmqBusConsumer } from "./lib/amq-bus-consumer";
+import { AmqConnector, ConnectionOptions } from "./lib/amq-connector";
+import { ConsumerRequest } from "./lib/consumer-request";
+import { ConsumerResponse } from "./lib/consumer-response";
+import { AmqBusBindings } from "./lib/keys";
+import { RequestContext } from "./lib/request-context";
 import {
   Amqbus,
   AmqBusOptions,
   AmqBusRouteOptions,
   AmqLogAdapter,
-} from "./lib";
-import { AmqBusConsumer } from "./lib/amq-bus-consumer";
-import { AmqConnector, ConnectionOptions } from "./lib/amq-connector";
-import { ConsumerRequest } from "./lib/consumer-request";
-import { ConsumerResponse } from "./lib/consumer-response";
-import { RequestContext } from "./lib/request-context";
+} from "./lib/types";
 import { AmqBusClientProvider } from "./providers/amq-bus-client.provider";
 import { AmqBusLogAdapterProvider } from "./providers/amq-bus-log-adapter.provider";
 import { FatalErrorHandlerProvider } from "./providers/fatal-error-handler.provider";
@@ -41,23 +42,33 @@ export class AmqBusComponent implements Component, LifeCycleObserver {
   private timeout: number = DEFAULT_TIMEOUT;
 
   bindings: Binding<any>[] = [
-    Binding.bind(AmqBusBindings.CONNECTOR).toClass(AmqConnector),
-    Binding.bind(AmqBusBindings.Consumer.INSTANCE).toInjectable(AmqBusConsumer),
-    Binding.bind(AmqBusBindings.Consumer.CONTEXT).toInjectable(RequestContext),
-    Binding.bind(AmqBusBindings.Consumer.REQUEST).toInjectable(ConsumerRequest),
-    Binding.bind(AmqBusBindings.Consumer.RESPONSE).toInjectable(
-      ConsumerResponse,
-    ),
-    Binding.bind(AmqBusBindings.Producer.INSTANCE).toProvider(
-      AmqBusClientProvider,
-    ),
-    Binding.bind(AmqBusBindings.LOG_ADAPTER).toProvider(
-      AmqBusLogAdapterProvider,
-    ),
-    Binding.bind(AmqBusBindings.FATAL_ERROR_HANDLER).toProvider(
-      FatalErrorHandlerProvider,
-    ),
-    Binding.bind(AmqBusBindings.ROUTE_CONFIG).toProvider(RouteConfigProvider),
+    Binding.bind(AmqBusBindings.CONNECTOR)
+      .toClass(AmqConnector)
+      .inScope(BindingScope.APPLICATION),
+    Binding.bind(AmqBusBindings.Consumer.INSTANCE)
+      .toInjectable(AmqBusConsumer)
+      .inScope(BindingScope.TRANSIENT),
+    Binding.bind(AmqBusBindings.Consumer.CONTEXT)
+      .toInjectable(RequestContext)
+      .inScope(BindingScope.TRANSIENT),
+    Binding.bind(AmqBusBindings.Consumer.REQUEST)
+      .toInjectable(ConsumerRequest)
+      .inScope(BindingScope.REQUEST),
+    Binding.bind(AmqBusBindings.Consumer.RESPONSE)
+      .toInjectable(ConsumerResponse)
+      .inScope(BindingScope.REQUEST),
+    Binding.bind(AmqBusBindings.Producer.INSTANCE)
+      .toProvider(AmqBusClientProvider)
+      .inScope(BindingScope.REQUEST),
+    Binding.bind(AmqBusBindings.LOG_ADAPTER)
+      .toProvider(AmqBusLogAdapterProvider)
+      .inScope(BindingScope.TRANSIENT),
+    Binding.bind(AmqBusBindings.FATAL_ERROR_HANDLER)
+      .toProvider(FatalErrorHandlerProvider)
+      .inScope(BindingScope.SINGLETON),
+    Binding.bind(AmqBusBindings.ROUTE_CONFIG)
+      .toProvider(RouteConfigProvider)
+      .inScope(BindingScope.SINGLETON),
   ];
 
   constructor(

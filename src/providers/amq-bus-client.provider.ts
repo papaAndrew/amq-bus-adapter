@@ -1,12 +1,14 @@
-import { BindingScope, Provider, inject, injectable } from "@loopback/core";
-import { AmqBusBindings } from "../keys";
-import { AmqBusProducer, AmqBusRouteOptions, AmqLogAdapter } from "../lib";
+import { Provider, inject, injectable } from "@loopback/core";
 import { AmqConnector } from "../lib/amq-connector";
+import { AmqBusBindings } from "../lib/keys";
 import { ProducerClient } from "../lib/producer-client";
+import {
+  AmqBusProducer,
+  AmqBusRouteOptions,
+  AmqLogAdapter,
+} from "../lib/types";
 
-@injectable({
-  scope: BindingScope.REQUEST,
-})
+@injectable()
 export class AmqBusClientProvider implements Provider<AmqBusProducer> {
   private amqClient: ProducerClient;
 

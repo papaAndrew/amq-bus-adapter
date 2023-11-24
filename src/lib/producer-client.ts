@@ -1,6 +1,6 @@
 import { Connection, Delivery, Message, ReceiverOptions, filter } from "rhea";
 import { AmqConnector } from "./amq-connector";
-import { genUuid4, rheaToAmqMessage, waitFor } from "./tools";
+import { createMessage, genUuid4, rheaToAmqMessage, waitFor } from "./tools";
 import {
   AmqBusProducer,
   AmqBusRouteOptions,
@@ -47,6 +47,8 @@ export class ProducerClient implements AmqBusProducer {
   protected genUuid(): string {
     return genUuid4();
   }
+  // protected genTimestamp(): string {
+  // }
 
   /**
    *
@@ -61,11 +63,7 @@ export class ProducerClient implements AmqBusProducer {
     const { logAdapter, options } = this;
     const queue: string = this.getOutgoingQueue();
 
-    const message: Message = {
-      message_id: this.genUuid(),
-      correlation_id: correlationId,
-      body: requestBody,
-    };
+    const message: Message = createMessage(requestBody)(correlationId);
 
     const sender = this.getConnection().open_sender(queue);
     let delivery: Delivery | undefined;

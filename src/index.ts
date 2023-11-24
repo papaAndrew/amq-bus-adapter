@@ -1,3 +1,3 @@
 export * from "./amq-bus.component";
-export * from "./keys";
-export * from "./lib";
+export * from "./lib/keys";
+export * from "./lib/types";

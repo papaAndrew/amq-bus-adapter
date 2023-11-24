@@ -1,9 +1,9 @@
-import { BindingScope, Setter, inject, injectable } from "@loopback/core";
-import { AmqBusBindings } from "../keys";
+import { Setter, inject, injectable } from "@loopback/core";
 import { SharedBindings } from "../shared-keys";
+import { AmqBusBindings } from "./keys";
 import { AmqLogAdapter, Amqbus, XrequestId } from "./types";
 
-@injectable({ scope: BindingScope.REQUEST })
+@injectable()
 export class ConsumerRequest implements Amqbus.Request {
   readonly name?: string;
 
