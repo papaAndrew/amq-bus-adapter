@@ -1,8 +1,8 @@
-import { BindingScope, inject, injectable } from "@loopback/core";
-import { AmqBusBindings } from "../keys";
+import { inject, injectable } from "@loopback/core";
+import { AmqBusBindings } from "./keys";
 import { AmqBusRequest, AmqLogAdapter, AmqMessage, Amqbus } from "./types";
 
-@injectable({ scope: BindingScope.REQUEST })
+@injectable()
 export class ConsumerResponse implements Amqbus.Response {
   outcomingMessage: AmqMessage;
 
@@ -34,7 +34,8 @@ export class ConsumerResponse implements Amqbus.Response {
    * @returns Message was sent
    */
   async send(responseBody: string): Promise<AmqMessage> {
-    // #TODO ?
+    // exlude puplication
+    // if method 'send' was used manually, then responseBody returned by builder
     if (this.outcomingMessage) {
       return this.outcomingMessage;
     }

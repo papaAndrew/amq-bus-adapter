@@ -1,18 +1,14 @@
 import { BindingScope, Context, inject, injectable } from "@loopback/core";
-import { AmqBusBindings } from "../keys";
+import { AmqBusBindings } from "./keys";
 import {
   AmqBusRequest,
-  AmqBusRequestContext,
   AmqBusResponse,
   Amqbus,
   ResponseBuilder,
 } from "./types";
 
-@injectable({ scope: BindingScope.REQUEST })
-export class RequestContext
-  extends Context
-  implements AmqBusRequestContext, Amqbus.ConsumerContext
-{
+@injectable()
+export class RequestContext extends Context implements Amqbus.ConsumerContext {
   request: AmqBusRequest;
   response?: AmqBusResponse;
   backout?: AmqBusResponse;
@@ -22,6 +18,9 @@ export class RequestContext
     parentContext: Context,
   ) {
     super(parentContext);
+    this.bind(AmqBusBindings.Consumer.CONTEXT)
+      .to(this)
+      .inScope(BindingScope.SINGLETON);
   }
 
   private async createRequest(incomingMessage: Amqbus.IncomingMessage) {
@@ -51,7 +50,7 @@ export class RequestContext
     );
   }
 
-  async build(
+  async consume(
     options: Amqbus.ConsumeOptions,
     incomingMessage: Amqbus.IncomingMessage,
     onResponse: Amqbus.SendResponseFunction,

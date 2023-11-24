@@ -1,15 +1,13 @@
-import { BindingScope, Provider, inject, injectable } from "@loopback/core";
+import { Provider, inject, injectable } from "@loopback/core";
 import { Request, RestBindings, RestRouter } from "@loopback/rest";
-import { AmqBusBindings } from "../keys";
-import { AmqBusOptions, AmqBusRouteOptions } from "../lib";
+import { AmqBusBindings } from "../lib/keys";
+import { AmqBusOptions, AmqBusRouteOptions } from "../lib/types";
 
 // export type RouteConfigFactory = (alias: string) => AmqBusRouteOptions | undefined;
 // export type RouteConfigMap = Record<string, AmqBusRouteOptions>;
 export type RouteConfig = AmqBusRouteOptions;
 
-@injectable({
-  scope: BindingScope.REQUEST,
-})
+@injectable()
 export class RouteConfigProvider implements Provider<RouteConfig> {
   constructor(
     @inject(AmqBusBindings.CONFIG)

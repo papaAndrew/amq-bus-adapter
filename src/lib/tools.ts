@@ -39,3 +39,16 @@ export function waitFor(
 export function genUuid4() {
   return uuid4();
 }
+
+export function createMessage(data: string, messageId?: string) {
+  const message: Message = {
+    body: data,
+    message_id: messageId ?? genUuid4(),
+    creation_time: new Date(),
+  };
+
+  return (correlationId?: string) => {
+    message.correlation_id = correlationId;
+    return message;
+  };
+}

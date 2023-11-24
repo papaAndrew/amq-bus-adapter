@@ -1,13 +1,8 @@
-import {
-  BindingScope,
-  Provider,
-  ValueOrPromise,
-  injectable,
-} from "@loopback/core";
+import { Provider, ValueOrPromise, injectable } from "@loopback/core";
 import { exit } from "process";
-import { ErrorHandler } from "../lib";
+import { ErrorHandler } from "../lib/types";
 
-@injectable({ scope: BindingScope.TRANSIENT })
+@injectable()
 export class FatalErrorHandlerProvider implements Provider<ErrorHandler> {
   constructor() {} // @inject() logAdapter: AmqBusLogAdapter
   private onError(err: any) {
