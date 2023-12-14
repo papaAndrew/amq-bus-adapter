@@ -72,6 +72,8 @@ export interface AmqLogAdapter {
     message: AmqMessage,
   ): ValueOrPromise<void>;
   onError(message: string, err: any): ValueOrPromise<void>;
+  onClientRequest(message: AmqMessage): ValueOrPromise<void>;
+  onClientResponse(message: AmqMessage): ValueOrPromise<void>;
 }
 
 /**
@@ -98,10 +100,18 @@ export interface AmqBusRequestContext {
   response?: AmqBusResponse;
 }
 
+export interface AmqBusClientRequest {
+  messageId?: string;
+  correlationId?: string;
+  timeout?: number;
+  send(body: string): Promise<AmqMessage>;
+  getResponse(timeout?: number): Promise<AmqMessage>;
+}
 /**
  *
  */
 export interface AmqBusProducer {
+  createRequest(route: AmqBusRouteOptions): AmqBusClientRequest;
   notify(requestBody: string, correlationId?: string): Promise<AmqMessage>;
   requestReply(requestBody: string): Promise<AmqMessage>;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@papa_andrew/amq-bus-adapter",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Apache ActiveMq Connector component for Loopback4 applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,13 +10,13 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "lint": "eslint . && prettier --check .",
-    "lint:fix": "eslint . --fix && prettier --write ."
+    "lint": "prettier --check . && eslint .",
+    "lint:fix": "prettier --write . && eslint . --fix"
   },
   "keywords": [
     "loopback4",
-    "ActiveMq",
-    "AMQP"
+    "openapi",
+    "logging"
   ],
   "author": "papaAndrew",
   "license": "ISC",

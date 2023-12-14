@@ -34,7 +34,6 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
   constructor(private apiLogAdapter?: ApiLogAdapter) {
     if (this.apiLogAdapter) {
       this.apiLogAdapter.sender = AmqBusLogAdapter.name;
-      this.apiLogAdapter.level = "http";
       const { showBody } = this.apiLogAdapter.options;
       this.showContent = showBody === true || showBody === "true";
     }
@@ -74,26 +73,30 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     metadata: object,
   ) {
     if (this.apiLogAdapter) {
-      this.apiLogAdapter?.http(eventName, message, metadata);
+      this.apiLogAdapter.info(eventName, message, metadata);
     }
   }
 
-  protected toMetaData(options: AmqBusRouteOptions, message: AmqMessage) {
-    const { messageId, correlationId } = message;
-    const request = {
-      ...options,
-      messageId,
-      correlationId,
-    };
-    return request;
+  protected toMetaData(message: AmqMessage, options?: AmqBusRouteOptions) {
+    if (options) {
+      const { messageId, correlationId } = message;
+      const request = {
+        ...options,
+        messageId,
+        correlationId,
+      };
+      return request;
+    }
+    const { data, ...metaData } = message;
+    return metaData;
   }
 
   onConsumerRequest(options: AmqBusRouteOptions, message: AmqMessage) {
     const eventName = "AmqConsumerRequest";
     const baseMessage = "Incoming AMQ request";
 
-    const request = this.toMetaData(options, message);
-    this.printMetaData(eventName, `${baseMessage} RECIEVED`, { request });
+    const request = this.toMetaData(message, options);
+    this.printMetaData(eventName, `${baseMessage} RECEIVED`, { request });
 
     const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
@@ -103,7 +106,7 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const eventName = "AmqBusConsumerResponse";
     const baseMessage = "Incoming AMQ request response";
 
-    const response = this.toMetaData(options, message);
+    const response = this.toMetaData(message, options);
     this.printMetaData(eventName, `${baseMessage} REPLY`, { response });
 
     const { data } = message ?? {};
@@ -114,8 +117,19 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const eventName = "MqiBusConsumerBackout";
     const baseMessage = "Incoming AMQ request backout";
 
-    const backout = this.toMetaData(options, message);
+    const backout = this.toMetaData(message, options);
     this.printMetaData(eventName, `${baseMessage} REPLY`, { backout });
+
+    const { data } = message ?? {};
+    this.printData(eventName, `${baseMessage} BODY`, data);
+  }
+
+  onClientRequest(message: AmqMessage) {
+    const eventName = "AmqProducerRequest";
+    const baseMessage = "Outcoming AMQ request";
+
+    const request = this.toMetaData(message);
+    this.printMetaData(eventName, `${baseMessage} SENT`, { request });
 
     const { data } = message ?? {};
     this.printData(eventName, `${baseMessage} BODY`, data);
@@ -125,7 +139,7 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const eventName = "AmqProducerRequest";
     const baseMessage = "Outcoming AMQ request";
 
-    const request = this.toMetaData(options, message);
+    const request = this.toMetaData(message, options);
     this.printMetaData(eventName, `${baseMessage} SENT`, { request });
 
     const { data } = message ?? {};
@@ -136,7 +150,18 @@ export class AmqBusLogAdapter implements AmqLogAdapter {
     const eventName = "AmqProducerResponse";
     const baseMessage = "Outcoming AMQ request response";
 
-    const response = this.toMetaData(options, message);
+    const response = this.toMetaData(message, options);
+    this.printMetaData(eventName, `${baseMessage} RECEIVED`, { response });
+
+    const { data } = message ?? {};
+    this.printData(eventName, `${baseMessage} BODY`, data);
+  }
+
+  onClientResponse(message: AmqMessage) {
+    const eventName = "AmqProducerResponse";
+    const baseMessage = "Outcoming AMQ request response";
+
+    const response = this.toMetaData(message);
     this.printMetaData(eventName, `${baseMessage} RECEIVED`, { response });
 
     const { data } = message ?? {};

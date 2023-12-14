@@ -5,7 +5,7 @@ import { AmqBusOptions, AmqBusRouteOptions } from "../lib/types";
 
 // export type RouteConfigFactory = (alias: string) => AmqBusRouteOptions | undefined;
 // export type RouteConfigMap = Record<string, AmqBusRouteOptions>;
-export type RouteConfig = AmqBusRouteOptions;
+export type RouteConfig = AmqBusRouteOptions | undefined;
 
 @injectable()
 export class RouteConfigProvider implements Provider<RouteConfig> {
@@ -41,6 +41,6 @@ export class RouteConfigProvider implements Provider<RouteConfig> {
     if (result) {
       return result;
     }
-    throw new Error(`Route config not found`);
+    // throw new Error(`Route config not found`);
   }
 }
