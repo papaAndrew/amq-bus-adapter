@@ -1,7 +1,9 @@
 import { Connection, Delivery, Message, ReceiverOptions, filter } from "rhea";
 import { AmqConnector } from "./amq-connector";
+import { ClientRequest } from "./client-request";
 import { createMessage, genUuid4, rheaToAmqMessage, waitFor } from "./tools";
 import {
+  AmqBusClientRequest,
   AmqBusProducer,
   AmqBusRouteOptions,
   AmqLogAdapter,
@@ -23,10 +25,10 @@ export class ProducerClient implements AmqBusProducer {
 
   constructor(
     protected connector: AmqConnector,
-    readonly options: AmqBusRouteOptions,
+    readonly options?: AmqBusRouteOptions,
     private logAdapter?: AmqLogAdapter,
   ) {
-    this.timeout = options.timeout ?? DEFAULT_TIMEOUT;
+    this.timeout = options?.timeout ?? DEFAULT_TIMEOUT;
   }
 
   protected getConnection(): Connection {
@@ -160,5 +162,17 @@ export class ProducerClient implements AmqBusProducer {
       );
     }
     throw new Error(`Input queue is undefined for requestReply`);
+  }
+
+  createRequest(route: AmqBusRouteOptions): AmqBusClientRequest {
+    const { logAdapter, options } = this;
+    const connection = this.getConnection();
+    const request = new ClientRequest(
+      connection,
+      route,
+      logAdapter,
+      options.timeout,
+    );
+    return request;
   }
 }
