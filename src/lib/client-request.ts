@@ -1,15 +1,19 @@
-import { Connection, Delivery, Message, ReceiverOptions, filter } from "rhea";
+import { Message, Receiver, ReceiverOptions, Sender, filter } from "rhea";
+import { genUuid4, rheaToAmqMessage, waitFor } from "./tools";
 import {
   AmqBusClientRequest,
-  AmqBusRouteOptions,
-  AmqLogAdapter,
+  AmqBusLogAdapter,
+  AmqBusRequestConfig,
+  AmqConnector,
   AmqMessage,
-  Amqbus,
-} from "..";
-import { createMessage, genUuid4, rheaToAmqMessage, waitFor } from "./tools";
+  ConsumeMsgResult,
+  ConsumeMsgStatus,
+  ProduceMsgResult,
+  ProduceMsgStatus,
+} from "./types";
 
 /**
- * Timeout awaiting response
+ * Timeout awaiting Producer "sendable", and awaiting response too
  */
 const DEFAULT_TIMEOUT = 60000;
 /**
@@ -18,144 +22,215 @@ const DEFAULT_TIMEOUT = 60000;
 const DEFAULT_INTERVAL = 1;
 
 export class ClientRequest implements AmqBusClientRequest {
+  topic?: string;
+
+  body?: string;
+
   messageId?: string;
+
   correlationId?: string;
+
   timeout: number = DEFAULT_TIMEOUT;
 
-  private sentRequest: Amqbus.OutcomingMessage | undefined;
+  replyTo?: string;
 
   constructor(
-    protected connection: Connection,
-    readonly route: AmqBusRouteOptions,
-    private logAdapter?: AmqLogAdapter,
-    defaultTimeout?: number,
+    private logAdapter: AmqBusLogAdapter,
+    private connector: AmqConnector,
+    readonly requestConfig?: AmqBusRequestConfig,
   ) {
-    this.timeout = defaultTimeout ?? DEFAULT_TIMEOUT;
-  }
+    if (requestConfig) {
+      const { topic, body, correlationId, messageId, replyTo, timeout } =
+        requestConfig ?? {};
 
-  protected getRequestQueue(): string {
-    const { outputQueue } = this.route;
-    if (outputQueue) {
-      return outputQueue;
+      this.topic = topic;
+      this.replyTo = replyTo;
+      this.body = body;
+      this.messageId = messageId;
+      this.correlationId = correlationId;
+      this.timeout = timeout ? Number(timeout) : DEFAULT_TIMEOUT;
     }
-    throw new Error(`Client request queue is ${outputQueue}`);
   }
 
-  protected getResponseQueue(): string {
-    const { inputQueue } = this.route;
-    if (inputQueue) {
-      return inputQueue;
+  private getTopic(givenTopic?: string): string {
+    const result = givenTopic ?? this.topic;
+    if (result) {
+      return result;
     }
-    throw new Error(`Client response queue is ${inputQueue}`);
+    throw new Error(`Request queue not specified`);
   }
 
-  protected genUuid(): string {
-    return genUuid4();
+  private getMessageId(givenMessageId?: string): string {
+    const result = givenMessageId ?? this.messageId ?? genUuid4();
+    return result;
   }
 
-  async send(body: string): Promise<AmqMessage> {
-    if (this.sentRequest) {
-      throw new Error(`Request already sent`);
+  private getBody(givenBody?: string): string {
+    const result = givenBody ?? this.body;
+    if (result) {
+      return result;
     }
-    const { logAdapter, correlationId, timeout } = this;
+    throw new Error(`Message body not specified`);
+  }
 
-    const queue: string = this.getRequestQueue();
-    const sender = this.connection.open_sender(queue);
+  private getReplyTo(givenReplyTo?: string): string {
+    const result = givenReplyTo ?? this.replyTo;
+    if (result) {
+      return result;
+    }
+    throw new Error(`Reply address not specified`);
+  }
 
-    const message: Message = createMessage(body)(correlationId);
-    let delivery: Delivery | undefined;
+  private getTimeOut(givenTimeOut?: string | number): number {
+    const result = givenTimeOut ? Number(givenTimeOut) : this.timeout;
+    return result;
+  }
 
-    const watchQue = new Promise<void>((resolve, reject) => {
-      sender.on("sendable", () => {
-        delivery = sender.send(message);
-        resolve();
-      });
-      sender.on("sender_error", (context) => {
-        const error =
-          context.error ?? new Error(`Sender 'sender_error' event occured`);
-        reject(error);
-      });
+  private buildRequest(requestConfig?: AmqBusRequestConfig) {
+    const { correlationId, timeout, topic, body, messageId, replyTo } =
+      requestConfig ?? {};
+
+    const request: AmqBusRequestConfig = {
+      topic: this.getTopic(topic),
+      body: this.getBody(body),
+      messageId: this.getMessageId(messageId),
+      correlationId: correlationId ?? this.correlationId,
+      replyTo: replyTo ?? this.replyTo,
+      timeout: this.getTimeOut(timeout),
+    };
+    return request;
+  }
+
+  async send(
+    bodyOrConfig?: string | AmqBusRequestConfig,
+  ): Promise<ProduceMsgResult> {
+    const result: ProduceMsgResult = {
+      status: ProduceMsgStatus.UNKNOWN,
+      receiveResponse: async () => {
+        return {
+          status: ConsumeMsgStatus.NO_REPLY,
+        };
+      },
+    };
+    const requestConfig: AmqBusRequestConfig =
+      typeof bodyOrConfig === "string" ? { body: bodyOrConfig } : bodyOrConfig;
+
+    let config: AmqBusRequestConfig | undefined;
+    try {
+      config = this.buildRequest(requestConfig);
+    } catch (err) {
+      result.status = ProduceMsgStatus.CONFIG_ERROR;
+      result.cause = err;
+      return result;
+    }
+
+    const { correlationId, topic, body, messageId } = config;
+    result.address = topic;
+
+    let sender: Sender | undefined;
+    try {
+      sender = this.connector.createSender(topic);
+    } catch (err) {
+      (result.status = ProduceMsgStatus.CONNECTION_ERROR), (result.cause = err);
+      return result;
+    }
+
+    const message: Message = {
+      body: body,
+      message_id: messageId,
+      correlation_id: correlationId,
+      creation_time: new Date(),
+    };
+
+    sender.on("sendable", () => {
+      const delivery = sender.send(message);
+
+      if (delivery) {
+        result.status = ProduceMsgStatus.SUCCESS;
+        result.message = rheaToAmqMessage(message);
+        result.receiveResponse = (options?: {
+          address?: string;
+          timeout?: number;
+        }) => {
+          const { address, timeout: replyTimeout } = options ?? {};
+          return this.receiveResponse(messageId, address, replyTimeout);
+        };
+      }
     });
-    const stopWatch = waitFor(timeout, DEFAULT_INTERVAL, () => {
-      return !!delivery;
+
+    sender.on("sender_error", (context) => {
+      result.status = ProduceMsgStatus.SENDER_ERROR;
+      result.cause =
+        context.error ?? new Error(`Sender 'sender_error' event occured`);
     });
 
-    return Promise.all([watchQue, stopWatch])
-      .then(() => {
-        if (delivery) {
-          this.sentRequest = rheaToAmqMessage<Amqbus.OutcomingMessage>(message);
-          logAdapter?.onClientRequest(this.sentRequest);
-          return this.sentRequest;
-        }
-        throw new Error(`Delivery state is ${typeof delivery}`);
-      })
+    const requestTimeout = this.getTimeOut(config.timeout);
+    await waitFor<boolean>(requestTimeout, DEFAULT_INTERVAL, () => {
+      return result.status !== ProduceMsgStatus.UNKNOWN;
+    })
       .catch((err) => {
-        logAdapter?.onError("Amq.producer.sender ERROR", err);
-        throw err;
+        result.status = ProduceMsgStatus.TIMED_OUT;
+        result.cause = err;
       })
       .finally(() => {
         sender.close();
       });
+
+    this.logAdapter.onClientRequest(result);
+    return result;
   }
 
-  private async lookingFor(
-    address: string,
+  private async receiveResponse(
     correlationId: string,
-  ): Promise<Amqbus.OutcomingMessage> {
-    const { logAdapter } = this;
-    const rcvOpts: ReceiverOptions = {
+    topic?: string,
+    timeout?: number,
+  ): Promise<ConsumeMsgResult> {
+    const replyTo = this.getReplyTo(topic);
+    const result: ConsumeMsgResult = {
+      status: ConsumeMsgStatus.TIMED_OUT,
+      address: replyTo,
+    };
+    const receiverOptions: ReceiverOptions = {
       source: {
-        address,
+        address: replyTo,
         filter: filter.selector(`JMSCorrelationID='${correlationId}'`),
       },
     };
-    const receiver = this.connection.open_receiver(rcvOpts);
+    let receiver: Receiver | undefined;
+    try {
+      receiver = this.connector.createReceiver(receiverOptions);
+    } catch (err) {
+      result.status = ConsumeMsgStatus.CONNECTION_ERROR;
+      result.cause = err;
+      return result;
+    }
 
-    let result: AmqMessage | undefined;
-
-    const watchQue = new Promise<void>((resolve, reject) => {
-      receiver.on("message", (context) => {
-        const message = context.message as Message;
-        result = rheaToAmqMessage<AmqMessage>(message);
-        resolve();
-      });
-      receiver.on("receiver_error", ({ receiver }) => {
-        const error =
-          receiver.error ??
-          new Error(`Receiver 'receiver_error' event occured`);
-        reject(error);
-      });
+    receiver.on("message", (context) => {
+      result.status = ConsumeMsgStatus.SUCCESS;
+      result.message = rheaToAmqMessage<AmqMessage>(context.message as Message);
     });
 
-    const stopWatch = waitFor(this.timeout, DEFAULT_INTERVAL, () => !!result);
+    receiver.on("receiver_error", ({ receiver }) => {
+      result.status = ConsumeMsgStatus.RECEIVER_ERROR;
+      result.cause =
+        receiver.error ?? new Error(`Receiver 'receiver_error' event occured`);
+    });
 
-    return Promise.all([watchQue, stopWatch])
-      .then(() => {
-        if (result) {
-          logAdapter?.onClientResponse(result);
-          return result as Amqbus.OutcomingMessage;
-        }
-        throw new Error(`Unknown message received '${result}'`);
-      })
+    const during = this.getTimeOut(timeout);
+    await waitFor(
+      during,
+      DEFAULT_INTERVAL,
+      () => result.status !== ConsumeMsgStatus.TIMED_OUT,
+    )
       .catch((err) => {
-        logAdapter?.onError("Amq.producer.sender ERROR", err);
-        throw err;
+        result.status = ConsumeMsgStatus.TIMED_OUT;
+        result.cause = err;
       })
       .finally(() => {
         receiver.close();
       });
-  }
-  async getResponse(timeout?: number): Promise<AmqMessage> {
-    const { messageId } = this.sentRequest ?? {};
-    if (messageId) {
-      if (timeout) {
-        this.timeout = timeout;
-      }
-      const queue = this.getResponseQueue();
 
-      return this.lookingFor(queue, messageId);
-    }
-
-    throw new Error("Request is not defined");
+    this.logAdapter.onClientResponse(result);
+    return result;
   }
 }

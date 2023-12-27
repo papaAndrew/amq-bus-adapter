@@ -23,7 +23,7 @@ module.exports = {
   plugins: ["@typescript-eslint"],
   ignorePatterns: ["src/**/*.test.ts", "**/*.js", "dist/*"],
   rules: {
-    camelcase: "warn",
+    camelcase: "off",
     "@typescript-eslint/no-namespace": "warn",
     "@typescript-eslint/no-unused-vars": "warn",
     "@typescript-eslint/no-explicit-any": "off",

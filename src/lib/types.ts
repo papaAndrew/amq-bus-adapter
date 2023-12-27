@@ -1,9 +1,7 @@
-import { ValueOrPromise } from "@loopback/core";
-import { AmqMessage } from "./amq-connector";
+import { Context, ValueOrPromise } from "@loopback/core";
+import { Receiver, ReceiverOptions, Sender, SenderOptions } from "rhea";
 
-export { AmqMessage } from "./amq-connector";
-
-export interface AmqConnectorOptions {
+export interface ConnectorOptions {
   transport: string | undefined;
   host: string | undefined;
   port: string | number | undefined;
@@ -12,162 +10,174 @@ export interface AmqConnectorOptions {
   ca?: string | Buffer | (string | Buffer)[] | undefined;
 }
 
-export interface AmqBusRouteOptions {
-  name?: string | undefined;
-  path?: string | undefined;
-  timeout?: number;
-  inputQueue?: string | undefined;
-  outputQueue?: string | undefined;
+export interface AmqBusRequestConfig {
+  topic?: string | undefined;
+  replyTo?: string | undefined;
+  messageId?: string | undefined;
+  correlationId?: string | undefined;
+  body?: string | undefined;
+  timeout?: number | string | undefined;
+}
+
+export interface ProducerOptions extends AmqBusRequestConfig {}
+
+export interface ConsumerOptions {
+  topic?: string | undefined;
+  replyTo?: string | undefined;
+  timeout?: number | string | undefined;
 }
 
 /**
  * Component's main config
  */
 export interface AmqBusOptions {
-  connector: AmqConnectorOptions;
-  backoutQueue?: string | undefined;
-  timeout?: number | string | undefined;
-  consumer?: AmqBusRouteOptions | AmqBusRouteOptions[];
-  producer?: AmqBusRouteOptions | AmqBusRouteOptions[];
+  connector: ConnectorOptions;
+  consumer?: ConsumerOptions;
+  producer?: ProducerOptions;
 }
 
-// export type RouteConfigMap = Record<string, AmqBusRouteOptions>;
+export interface AmqMessage {
+  messageId?: string;
+  correlationId?: string;
+  data: string | null;
+  created?: string;
+}
 
+export enum ProduceMsgStatus {
+  SUCCESS = "SUCCESS",
+  CONFIG_ERROR = "CONFIG_ERROR",
+  CONNECTION_ERROR = "CONNECTION_ERROR",
+  SENDER_ERROR = "SENDER_ERROR",
+  TIMED_OUT = "TIMED_OUT",
+  UNKNOWN = "UNKNOWN",
+}
+
+export enum ConsumeMsgStatus {
+  SUCCESS = "SUCCESS",
+  CONFIG_ERROR = "CONFIG_ERROR",
+  CONNECTION_ERROR = "CONNECTION_ERROR",
+  RECEIVER_ERROR = "RECEIVER_ERROR",
+  TIMED_OUT = "TIMED_OUT",
+  NO_REPLY = "NO_REPLY",
+}
+
+export interface ConsumeMsgResult {
+  status: ConsumeMsgStatus;
+  address?: string;
+  message?: AmqMessage;
+  cause?: any; // Error
+}
+
+export interface ProduceMsgResult {
+  status: ProduceMsgStatus;
+  address?: string;
+  message?: AmqMessage;
+  cause?: any; // Error
+  receiveResponse?(options?: {
+    address?: string;
+    timeout?: number;
+  }): Promise<ConsumeMsgResult>;
+}
+
+export interface AmqBusClient {
+  buildConfig(options?: ProducerOptions): AmqBusRequestConfig;
+  createRequest(options?: ProducerOptions): AmqBusClientRequest;
+  notify(
+    requestBody: string,
+    correlationId?: string,
+  ): Promise<ProduceMsgResult>;
+  requestReply(requestBody: string): Promise<ConsumeMsgResult>;
+}
+
+export interface AmqBusServer {
+  start(): void;
+  stop(): void;
+}
+
+export interface AmqBusServerFactory {
+  createServer(
+    options: ConsumerOptions,
+    buildResponse?: BuildResponseFunction,
+  ): AmqBusServer;
+}
+/**
+ *
+ */
+export interface AmqBusServerRequest {
+  readonly topic: string;
+  incomingMessage: AmqMessage;
+}
+
+/**
+ *
+ */
+export interface AmqBusServerResponse {
+  send(body: string, topic?: string): Promise<ProduceMsgResult>;
+}
+
+/**
+ *
+ */
+export interface AmqBusServerContext extends Context {
+  request: AmqBusServerRequest;
+  response?: AmqBusServerResponse;
+}
+
+export type BuildResponseFunction = (
+  requestBody: string,
+) => ValueOrPromise<string | void>;
 /**
  * ResponseBuilder
  */
 export interface ResponseBuilder {
-  buildResponse(requestBody: string): Promise<string | undefined>;
+  buildResponse?: BuildResponseFunction;
 }
 
-/**
- *
- */
-export type XrequestId = string | undefined;
+export interface AmqBusClientRequest extends AmqBusRequestConfig {
+  send(bodyOrConfig?: string | AmqBusRequestConfig): Promise<ProduceMsgResult>;
+}
 
 export type ErrorHandler = (err?: any) => void;
 
-export interface AmqLogAdapter {
+export interface AmqBusLogAdapter {
   onConnect(metadata: object): ValueOrPromise<void>;
   onDisconnect(metadata: object): ValueOrPromise<void>;
   onConsumerOpen(metadata: object): ValueOrPromise<void>;
-  onConsumerRequest(
-    options: AmqBusRouteOptions,
-    message?: AmqMessage,
-  ): ValueOrPromise<void>;
-  onConsumerResponse(
-    options: AmqBusRouteOptions,
-    message?: AmqMessage,
-  ): ValueOrPromise<void>;
-  onConsumerBackout(
-    options: AmqBusRouteOptions,
-    message?: AmqMessage,
-  ): ValueOrPromise<void>;
-  onProducerRequest(
-    options: AmqBusRouteOptions,
-    message: AmqMessage,
-  ): ValueOrPromise<void>;
-  onProducerResponse(
-    options: AmqBusRouteOptions,
-    message: AmqMessage,
-  ): ValueOrPromise<void>;
   onError(message: string, err: any): ValueOrPromise<void>;
-  onClientRequest(message: AmqMessage): ValueOrPromise<void>;
-  onClientResponse(message: AmqMessage): ValueOrPromise<void>;
+  onClientRequest(produceMsgResult: ProduceMsgResult): ValueOrPromise<void>;
+  onClientResponse(consumeMsgResult: ConsumeMsgResult): ValueOrPromise<void>;
+  onServerRequest(consumeMsgResult: ConsumeMsgResult): ValueOrPromise<void>;
+  onServerResponse(produceMsgResult: ProduceMsgResult): ValueOrPromise<void>;
 }
 
-/**
- *
- */
-export interface AmqBusRequest {
-  inputQueue: string;
-  messageId: string;
-  correlationId?: string;
-}
+export type SendResponseFunction = (amqMessage: AmqMessage) => Promise<void>;
 
-/**
- *
- */
-export interface AmqBusResponse {
-  send(responseBody: string): Promise<AmqMessage>;
-}
+// export interface IncomingMessage extends AmqMessage {
+//   messageId: string;
+//   data: string;
+// }
+// export interface OutcomingMessage extends AmqMessage {
+//   correlationId: string;
+// }
 
-/**
- *
- */
-export interface AmqBusRequestContext {
-  request: AmqBusRequest;
-  response?: AmqBusResponse;
-}
+// export interface ApplictionProperties {
+//   messageId?: string;
+//   correlationId?: string;
+// }
 
-export interface AmqBusClientRequest {
-  messageId?: string;
-  correlationId?: string;
-  timeout?: number;
-  send(body: string): Promise<AmqMessage>;
-  getResponse(timeout?: number): Promise<AmqMessage>;
-}
-/**
- *
- */
-export interface AmqBusProducer {
-  createRequest(route: AmqBusRouteOptions): AmqBusClientRequest;
-  notify(requestBody: string, correlationId?: string): Promise<AmqMessage>;
-  requestReply(requestBody: string): Promise<AmqMessage>;
-}
+// export interface ServerRequest extends AmqBusRequest {
+//   receive(incomingMessage: IncomingMessage): void;
+// }
 
-/**
- *
- */
-export namespace Amqbus {
-  export interface ConsumeOptions extends AmqBusRouteOptions {
-    name: string;
-    inputQueue: string;
-  }
+// export interface ServerResponse extends AmqBusResponse {
+//   init(onResponse: SendResponseFunction): void;
+// }
 
-  export interface ProduceOptions extends AmqBusRouteOptions {
-    name: string;
-    outputQueue: string;
-  }
-
-  export interface Consumer {
-    open(options: ConsumeOptions): void;
-    close(): void;
-  }
-
-  export type SendResponseFunction = (amqMessage: AmqMessage) => Promise<void>;
-
-  export interface ConsumerContext extends AmqBusRequestContext {
-    consume(
-      options: AmqBusRouteOptions,
-      requestMessage: AmqMessage,
-      onResponse: SendResponseFunction,
-    ): void;
-  }
-
-  // export interface Producer {
-  //   open(options: ProduceOptions): void;
-  //   close(): void;
-  // }
-
-  export interface IncomingMessage extends AmqMessage {
-    messageId: string;
-    data: string;
-  }
-  export interface OutcomingMessage extends AmqMessage {
-    correlationId: string;
-  }
-
-  export interface ApplictionProperties {
-    messageId?: string;
-    correlationId?: string;
-  }
-
-  export interface Request extends AmqBusRequest {
-    receive(incomingMessage: Amqbus.IncomingMessage): void;
-  }
-
-  export interface Response extends AmqBusResponse {
-    init(onResponse: SendResponseFunction): void;
-  }
+export interface AmqConnector {
+  readonly config: any;
+  connect(): Promise<void>;
+  disconnect(): void;
+  isConnected(): boolean;
+  createSender(options: string | SenderOptions): Sender;
+  createReceiver(options: string | ReceiverOptions): Receiver;
 }
