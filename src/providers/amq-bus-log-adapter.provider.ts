@@ -1,20 +1,21 @@
-import { Provider, inject, injectable } from "@loopback/core";
-import { AmqBusLogAdapter, ApiLogAdapter } from "../lib/amq-bus-log-adapter";
-import { AmqLogAdapter } from "../lib/types";
-import { SharedBindings } from "../shared-keys";
+import { CoreBindings, Provider, inject, injectable } from "@loopback/core";
+import { AmqbLogAdapter, ApiLogAdapter } from "../lib/amqb-log-adapter";
+import { AmqBusLogAdapter } from "../lib/types";
+
+export const MESSAGE_LOG_ADAPTER = `${CoreBindings.COMPONENTS}.ApiLogAdapterComponent.MessageLogAdapter`;
 
 @injectable()
-export class AmqBusLogAdapterProvider implements Provider<AmqLogAdapter> {
-  private adapter: AmqLogAdapter;
+export class AmqBusLogAdapterProvider implements Provider<AmqBusLogAdapter> {
+  private adapter: AmqBusLogAdapter;
 
   constructor(
-    @inject(SharedBindings.MESSAGE_LOG_ADAPTER, { optional: true })
+    @inject(MESSAGE_LOG_ADAPTER, { optional: true })
     apiLogAdapter?: ApiLogAdapter,
   ) {
-    this.adapter = new AmqBusLogAdapter(apiLogAdapter);
+    this.adapter = new AmqbLogAdapter(apiLogAdapter);
   }
 
-  value(): AmqLogAdapter {
+  value(): AmqBusLogAdapter {
     return this.adapter;
   }
 }

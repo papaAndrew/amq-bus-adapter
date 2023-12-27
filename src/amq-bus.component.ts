@@ -1,173 +1,117 @@
 import {
-  Application,
   Binding,
   BindingScope,
   Component,
-  config,
   ContextTags,
-  CoreBindings,
   inject,
   injectable,
   LifeCycleObserver,
 } from "@loopback/core";
-import { AmqBusConsumer } from "./lib/amq-bus-consumer";
-import { AmqConnector, ConnectionOptions } from "./lib/amq-connector";
-import { ConsumerRequest } from "./lib/consumer-request";
-import { ConsumerResponse } from "./lib/consumer-response";
 import { AmqBusBindings } from "./lib/keys";
-import { RequestContext } from "./lib/request-context";
 import {
-  Amqbus,
+  AmqBusLogAdapter,
   AmqBusOptions,
-  AmqBusRouteOptions,
-  AmqLogAdapter,
+  AmqBusServer,
+  AmqBusServerFactory,
+  AmqConnector,
+  ErrorHandler,
+  ResponseBuilder,
 } from "./lib/types";
 import { AmqBusClientProvider } from "./providers/amq-bus-client.provider";
 import { AmqBusLogAdapterProvider } from "./providers/amq-bus-log-adapter.provider";
+import { AmqBusServerFactoryProvider } from "./providers/amq-bus-server-factory.provider";
+import { AmqConnectorProvider } from "./providers/amq-connector.provider";
 import { FatalErrorHandlerProvider } from "./providers/fatal-error-handler.provider";
-import { RouteConfigProvider } from "./providers/route-config.provider";
-
-const DEFAULT_TIMEOUT = 60000;
-
-type ConnectionTransport = "tls" | "ssl";
+import { ResponseBuilderProvider } from "./providers/response-builder.provider";
 
 @injectable({ tags: { [ContextTags.KEY]: AmqBusBindings.COMPONENT } })
 export class AmqBusComponent implements Component, LifeCycleObserver {
-  private logAdapter?: AmqLogAdapter;
-
-  private connector: AmqConnector;
-
-  private consumers: Amqbus.Consumer[] = [];
-
-  private timeout: number = DEFAULT_TIMEOUT;
-
   bindings: Binding<any>[] = [
-    Binding.bind(AmqBusBindings.CONNECTOR)
-      .toClass(AmqConnector)
-      .inScope(BindingScope.APPLICATION),
-    Binding.bind(AmqBusBindings.Consumer.INSTANCE)
-      .toInjectable(AmqBusConsumer)
-      .inScope(BindingScope.TRANSIENT),
-    Binding.bind(AmqBusBindings.Consumer.CONTEXT)
-      .toInjectable(RequestContext)
-      .inScope(BindingScope.TRANSIENT),
-    Binding.bind(AmqBusBindings.Consumer.REQUEST)
-      .toInjectable(ConsumerRequest)
-      .inScope(BindingScope.REQUEST),
-    Binding.bind(AmqBusBindings.Consumer.RESPONSE)
-      .toInjectable(ConsumerResponse)
-      .inScope(BindingScope.REQUEST),
-    Binding.bind(AmqBusBindings.Producer.INSTANCE)
-      .toProvider(AmqBusClientProvider)
+    Binding.bind(AmqBusBindings.FATAL_ERROR_HANDLER)
+      .toProvider(FatalErrorHandlerProvider)
       .inScope(BindingScope.REQUEST),
     Binding.bind(AmqBusBindings.LOG_ADAPTER)
       .toProvider(AmqBusLogAdapterProvider)
-      .inScope(BindingScope.TRANSIENT),
-    Binding.bind(AmqBusBindings.FATAL_ERROR_HANDLER)
-      .toProvider(FatalErrorHandlerProvider)
+      .inScope(BindingScope.REQUEST),
+    Binding.bind(AmqBusBindings.CONNECTOR)
+      .toProvider(AmqConnectorProvider)
+      .inScope(BindingScope.APPLICATION),
+    Binding.bind(AmqBusBindings.PRODUCER_CLIENT)
+      .toProvider(AmqBusClientProvider)
+      .inScope(BindingScope.REQUEST),
+    Binding.bind(AmqBusBindings.CONSUMER_SERVER_FACTORY)
+      .toProvider(AmqBusServerFactoryProvider)
       .inScope(BindingScope.SINGLETON),
-    Binding.bind(AmqBusBindings.ROUTE_CONFIG)
-      .toProvider(RouteConfigProvider)
-      .inScope(BindingScope.SINGLETON),
+    Binding.bind(AmqBusBindings.RESPONSE_BUILDER)
+      .toProvider(ResponseBuilderProvider)
+      .inScope(BindingScope.APPLICATION),
   ];
 
-  constructor(
-    @inject(CoreBindings.APPLICATION_INSTANCE)
-    private application: Application,
-    @config()
-    private options: AmqBusOptions,
-  ) {
-    const { timeout } = options;
-    if (timeout) {
-      this.timeout = Number(timeout);
-    }
+  private _connector: AmqConnector;
 
-    this.bindings.push(Binding.bind(AmqBusBindings.CONFIG).to(this.options));
-  }
+  private _server?: AmqBusServer;
 
-  private async openConsumer(
-    options: Amqbus.ConsumeOptions,
-  ): Promise<Amqbus.Consumer> {
-    return this.application
-      .get(AmqBusBindings.Consumer.INSTANCE)
-      .then(async (consumer) => {
-        consumer.open(options);
-        this.consumers.push(consumer);
-        await this.logAdapter?.onConsumerOpen({ options });
-        return consumer;
-      });
-  }
+  private _logAdapter: AmqBusLogAdapter;
 
-  private async openConsumers(
-    options: AmqBusRouteOptions | AmqBusRouteOptions[],
-  ) {
-    const cfgs = Array.isArray(options) ? options : [options];
+  private _errorHandler: ErrorHandler;
 
-    const tasks: Promise<void>[] = cfgs.map(async (cfg, i) => {
-      const { name, timeout } = cfg;
-      const opts = {
-        ...cfg,
-        name: name ?? `Consumer_${i}`,
-        timeout: timeout ?? this.timeout,
-      } as Amqbus.ConsumeOptions;
-      await this.openConsumer(opts);
-    });
-    await Promise.all(tasks);
-  }
+  async init(
+    @inject(AmqBusBindings.CONFIG)
+    options: AmqBusOptions,
+    @inject(AmqBusBindings.RESPONSE_BUILDER)
+    responseBuilder: ResponseBuilder,
+    @inject(AmqBusBindings.CONSUMER_SERVER_FACTORY)
+    factory: AmqBusServerFactory,
+    @inject(AmqBusBindings.CONNECTOR)
+    connector: AmqConnector,
+    @inject(AmqBusBindings.LOG_ADAPTER)
+    logAdapter: AmqBusLogAdapter,
+    @inject(AmqBusBindings.FATAL_ERROR_HANDLER)
+    errorHandler: ErrorHandler,
+  ): Promise<void> {
+    this._connector = connector;
+    this._logAdapter = logAdapter;
+    this._errorHandler = errorHandler;
 
-  private closeConsumers() {
-    if (this.consumers) {
-      this.consumers.forEach((consumer) => consumer.close());
+    const consumerConfig = options.consumer;
+    if (consumerConfig) {
+      const buildResponse = responseBuilder.buildResponse.bind(responseBuilder);
+      this._server = factory.createServer(consumerConfig, buildResponse);
     }
   }
 
   private async connect() {
-    const { transport, port, ...cfg } = this.options.connector;
-    const connectionOptions: ConnectionOptions = transport
-      ? {
-          ...cfg,
-          port: Number(port),
-          transport: <ConnectionTransport>transport,
-        }
-      : {
-          ...cfg,
-          port: Number(port),
-        };
-
-    await this.connector
-      .connect(connectionOptions)
+    await this._connector
+      .connect()
       .then(() => {
-        this.logAdapter?.onConnect({ connectionOptions });
+        this._logAdapter.onConnect(this._connector.config);
       })
-      .catch(this.onFatalError.bind(this));
+      .catch((err) => {
+        this._logAdapter.onError("Connector exception", err);
+        this._errorHandler(err);
+      });
   }
 
-  protected onFatalError(err: any) {
-    const handler = this.application.getSync(
-      AmqBusBindings.FATAL_ERROR_HANDLER,
-    );
-    console.error("Fatal Error", err);
-
-    handler(err);
+  private async openConsumers() {
+    this._server?.start();
   }
 
-  async init() {
-    this.logAdapter = await this.application.get(AmqBusBindings.LOG_ADAPTER);
-    this.connector = await this.application.get(AmqBusBindings.CONNECTOR);
-    this.application.bind(AmqBusBindings.CONNECTOR).to(this.connector);
+  private async closeConsumers() {
+    this._server?.stop();
+  }
+
+  private async disconnect() {
+    this._connector.disconnect();
+    this._logAdapter.onDisconnect({ cause: "Component stopped" });
   }
 
   async start() {
     await this.connect();
-    if (this.options.consumer) {
-      await this.openConsumers(this.options.consumer).catch(
-        this.onFatalError.bind(this),
-      );
-    }
+    await this.openConsumers();
   }
 
   async stop() {
     this.closeConsumers();
-    this.connector.disconnect();
+    this.disconnect();
   }
 }

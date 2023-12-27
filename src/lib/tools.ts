@@ -1,35 +1,41 @@
 import { Message } from "rhea";
 import { v4 as uuid4 } from "uuid";
-import { AmqMessage } from "./amq-connector";
+import { AmqBusRequestConfig, AmqMessage } from "./types";
 
 export function rheaToAmqMessage<T = AmqMessage>(message: Message): T {
-  const { body, correlation_id, message_id } = message as Message;
+  const { body, correlation_id, message_id, creation_time } =
+    message as Message;
   const amqMessage: AmqMessage = {
-    messageId: message_id ? String(message_id) : undefined,
-    correlationId: correlation_id ? String(correlation_id) : undefined,
-    data: body,
+    created: creation_time?.toISOString(),
+    data: String(body),
+    correlationId: correlation_id?.toString(),
+    messageId: message_id?.toString(),
   };
   return amqMessage as T;
 }
 
-export function waitFor(
+export function waitFor<T = boolean>(
   timeout: number,
   interval: number,
-  canResolve: (timer: number) => boolean,
-): Promise<void> {
+  haveResult: (timer: number) => T | undefined,
+): Promise<T> {
+  const timeStart = new Date().getTime();
+  const timeStop = timeStart + timeout;
+
   return new Promise((resolve, reject) => {
-    let timer = timeout;
-    const task = function () {
-      if (timer < 0) {
-        const err = new Error(`Timeout elapsed`);
+    const task = () => {
+      const now = new Date().getTime();
+      if (now > timeStop) {
+        const err = new Error(`Timeout elapsed (${timeout} ms)`);
         reject(err);
         return;
       }
-      if (canResolve(timer)) {
-        resolve();
+      const result = haveResult(now - timeStart);
+      if (result) {
+        resolve(result);
         return;
       }
-      timer = timer -= interval;
+      // timer = timer -= interval;
       setTimeout(task, interval);
     };
     task();
@@ -40,15 +46,18 @@ export function genUuid4() {
   return uuid4();
 }
 
-export function createMessage(data: string, messageId?: string) {
+export function createMessage(requestConfig: AmqBusRequestConfig) {
+  const { body, messageId, correlationId } = requestConfig;
   const message: Message = {
-    body: data,
+    body,
     message_id: messageId ?? genUuid4(),
+    correlation_id: correlationId,
     creation_time: new Date(),
   };
+  return message;
+}
 
-  return (correlationId?: string) => {
-    message.correlation_id = correlationId;
-    return message;
-  };
+export function nowLocaleTime(): string {
+  const localTime = new Date().toISOString();
+  return localTime;
 }
