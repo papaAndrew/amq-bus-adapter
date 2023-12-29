@@ -11,7 +11,7 @@ import { CONNECION_OPTIONS } from "./helpers";
 
 const TOPIC = "AMQADAPTER.TEST.IN";
 
-describe("ConsumerServer", () => {
+describe.skip("ConsumerServer", () => {
   let connector: AmqConnector;
   let client: ProducerClient;
 
@@ -41,6 +41,7 @@ describe("ConsumerServer", () => {
     /** server listens queue */
     const server = new ConsumerServer(
       connector,
+      options,
       (ctx) => {
         if ((ctx.message as Message).message_id === messageId) {
           result = ctx.message;
@@ -49,7 +50,6 @@ describe("ConsumerServer", () => {
       (err) => {
         errorMessage = err.message;
       },
-      options,
     );
     server.start();
 

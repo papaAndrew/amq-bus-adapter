@@ -1,34 +1,87 @@
 import { Context, ValueOrPromise } from "@loopback/core";
 import { Receiver, ReceiverOptions, Sender, SenderOptions } from "rhea";
+import { ServerContext } from "./server-context";
 
+/**
+ * Конфигурация подключения
+ */
 export interface ConnectorOptions {
+  /**
+   * tls | ssl
+   */
   transport: string | undefined;
+  /**
+   * адрес сервера
+   */
   host: string | undefined;
   port: string | number | undefined;
+  /**
+   * аутентификация
+   */
   username?: string | undefined;
   password?: string | undefined;
+  /**
+   * доверенные сертификаты  - буфер или имя файла
+   */
   ca?: string | Buffer | (string | Buffer)[] | undefined;
 }
 
+/**
+ * Конфигурация клиентского запроса
+ */
 export interface AmqBusRequestConfig {
+  /**
+   * очередь запросов (куда отправлять)
+   */
   topic?: string | undefined;
+  /**
+   * очердь ответов (начинает прослушиваться после отправки запроса)
+   */
   replyTo?: string | undefined;
+  /**
+   * messageId - можно указать явно, иначе будет сгенерирован UUIDv4
+   */
   messageId?: string | undefined;
+  /**
+   * correlationId - как правило, указывают для отправки ответа
+   */
   correlationId?: string | undefined;
+  /**
+   * тело сообщения
+   */
   body?: string | undefined;
+  /**
+   * лимит ожидания готовности транспорта (Producer), а так же ожидания ответа .
+   * По умолчанию = 60000
+   */
   timeout?: number | string | undefined;
 }
-
+/**
+ * Настройки (шаблон) запроса можно скофигурировать как пресет, на этапе инициализации компонента
+ */
 export interface ProducerOptions extends AmqBusRequestConfig {}
 
+/**
+ * Конфигурация серверной части (Consumer)
+ */
 export interface ConsumerOptions {
+  /**
+   * очередь запросов, которую слушает Сервер
+   */
   topic?: string | undefined;
+  /**
+   * очередь ответов
+   */
   replyTo?: string | undefined;
+  /**
+   * лимит ожидания готовности транспорта (Producer) для  отправки ответа.
+   * По умолчанию = 60000
+   */
   timeout?: number | string | undefined;
 }
 
 /**
- * Component's main config
+ * Интерфейс конфигурауции Компонента
  */
 export interface AmqBusOptions {
   connector: ConnectorOptions;
@@ -36,6 +89,9 @@ export interface AmqBusOptions {
   producer?: ProducerOptions;
 }
 
+/**
+ * Дескриптор сообщения
+ */
 export interface AmqMessage {
   messageId?: string;
   correlationId?: string;
@@ -43,6 +99,9 @@ export interface AmqMessage {
   created?: string;
 }
 
+/**
+ * Формальный Статус операции отправки
+ */
 export enum ProduceMsgStatus {
   SUCCESS = "SUCCESS",
   CONFIG_ERROR = "CONFIG_ERROR",
@@ -52,6 +111,9 @@ export enum ProduceMsgStatus {
   UNKNOWN = "UNKNOWN",
 }
 
+/**
+ * Формальный Статус операции получения
+ */
 export enum ConsumeMsgStatus {
   SUCCESS = "SUCCESS",
   CONFIG_ERROR = "CONFIG_ERROR",
@@ -61,6 +123,9 @@ export enum ConsumeMsgStatus {
   NO_REPLY = "NO_REPLY",
 }
 
+/**
+ * Дескриптор результата операции Получения
+ */
 export interface ConsumeMsgResult {
   status: ConsumeMsgStatus;
   address?: string;
@@ -68,6 +133,9 @@ export interface ConsumeMsgResult {
   cause?: any; // Error
 }
 
+/**
+ * Дескриптор результата операции Отправки
+ */
 export interface ProduceMsgResult {
   status: ProduceMsgStatus;
   address?: string;
@@ -79,29 +147,59 @@ export interface ProduceMsgResult {
   }): Promise<ConsumeMsgResult>;
 }
 
+/**
+ * Интефейс Клиента (Producer), который обычно инъектируется по месту применения
+ */
 export interface AmqBusClient {
+  /**
+   * Создать конфиг запроса соединением настроек дефолтных и заданных
+   */
   buildConfig(options?: ProducerOptions): AmqBusRequestConfig;
+  /**
+   * Создать Отправщик запросов
+   */
   createRequest(options?: ProducerOptions): AmqBusClientRequest;
+  /**
+   * Оправить запрос без ответа
+   */
   notify(
     requestBody: string,
     correlationId?: string,
   ): Promise<ProduceMsgResult>;
+  /**
+   * Оправить запрос с ожиданием ответа
+   */
   requestReply(requestBody: string): Promise<ConsumeMsgResult>;
 }
 
+/**
+ * Интефейс клиентского запроса
+ */
+export interface AmqBusClientRequest extends AmqBusRequestConfig {
+  send(bodyOrConfig?: string | AmqBusRequestConfig): Promise<ProduceMsgResult>;
+}
+
+/**
+ * Интерфейс Сервера (Consumer)
+ */
 export interface AmqBusServer {
   start(): void;
   stop(): void;
 }
 
+/**
+ * Фабрика - генератор серверов.
+ * Используется, если их нужно более чем 1
+ */
 export interface AmqBusServerFactory {
   createServer(
     options: ConsumerOptions,
     buildResponse?: BuildResponseFunction,
-  ): AmqBusServer;
+  ): ValueOrPromise<AmqBusServer>;
 }
+
 /**
- *
+ * Запрос к серверу
  */
 export interface AmqBusServerRequest {
   readonly topic: string;
@@ -109,36 +207,55 @@ export interface AmqBusServerRequest {
 }
 
 /**
- *
+ * Инструмент сервера для отправки ответа
  */
 export interface AmqBusServerResponse {
   send(body: string, topic?: string): Promise<ProduceMsgResult>;
 }
 
 /**
- *
+ * Контекст серверного запроса (RequestContext).
+ * Изолированная среда исполнения потока (flow) Запроса
+ * Создается автоматически при появлении сообщения в очереди запросов
  */
 export interface AmqBusServerContext extends Context {
   request: AmqBusServerRequest;
   response?: AmqBusServerResponse;
 }
 
+/**
+ * Генератор Контекстов серверного запроса
+ */
+export interface ServerContextFactory {
+  createContext(options: ConsumerOptions): Promise<ServerContext>;
+}
+
+/**
+ * Функция обратного вызова (callback) для получения серверного запроса
+ */
 export type BuildResponseFunction = (
   requestBody: string,
 ) => ValueOrPromise<string | void>;
+
 /**
- * ResponseBuilder
+ * Шаблон сервиса для получения и обработки серверного запроса.
+ * Этот сервис будет вызван автоматически, в Контексте запроса
  */
 export interface ResponseBuilder {
   buildResponse?: BuildResponseFunction;
 }
 
-export interface AmqBusClientRequest extends AmqBusRequestConfig {
-  send(bodyOrConfig?: string | AmqBusRequestConfig): Promise<ProduceMsgResult>;
-}
-
+/**
+ * Обработчик фатальных ошибок
+ */
 export type ErrorHandler = (err?: any) => void;
 
+/**
+ * Технологические интерфейсы
+ */
+/**
+ *
+ */
 export interface AmqBusLogAdapter {
   onConnect(metadata: object): ValueOrPromise<void>;
   onDisconnect(metadata: object): ValueOrPromise<void>;
@@ -151,27 +268,6 @@ export interface AmqBusLogAdapter {
 }
 
 export type SendResponseFunction = (amqMessage: AmqMessage) => Promise<void>;
-
-// export interface IncomingMessage extends AmqMessage {
-//   messageId: string;
-//   data: string;
-// }
-// export interface OutcomingMessage extends AmqMessage {
-//   correlationId: string;
-// }
-
-// export interface ApplictionProperties {
-//   messageId?: string;
-//   correlationId?: string;
-// }
-
-// export interface ServerRequest extends AmqBusRequest {
-//   receive(incomingMessage: IncomingMessage): void;
-// }
-
-// export interface ServerResponse extends AmqBusResponse {
-//   init(onResponse: SendResponseFunction): void;
-// }
 
 export interface AmqConnector {
   readonly config: any;

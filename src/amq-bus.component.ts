@@ -76,7 +76,7 @@ export class AmqBusComponent implements Component, LifeCycleObserver {
     const consumerConfig = options.consumer;
     if (consumerConfig) {
       const buildResponse = responseBuilder.buildResponse.bind(responseBuilder);
-      this._server = factory.createServer(consumerConfig, buildResponse);
+      this._server = await factory.createServer(consumerConfig, buildResponse);
     }
   }
 

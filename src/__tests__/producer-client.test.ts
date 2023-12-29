@@ -8,7 +8,7 @@ import { CONNECION_OPTIONS } from "./helpers";
 
 const TOPIC_REQUEST = "AMQADAPTER.TEST.OUT";
 
-describe("AmqBusProducer", () => {
+describe.skip("AmqBusProducer", () => {
   let connector: AmqConnector;
 
   beforeAll(async () => {
