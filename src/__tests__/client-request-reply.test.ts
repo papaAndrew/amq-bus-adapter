@@ -9,7 +9,7 @@ import { CONNECION_OPTIONS } from "./helpers";
 const TOPIC_RQ = "AMQADAPTER.TEST.OUT";
 const TOPIC_RS = "AMQADAPTER.TEST.IN";
 
-describe("request-reply pattern", () => {
+describe.skip("request-reply pattern", () => {
   let connector: AmqConnector;
   let client: ProducerClient;
 

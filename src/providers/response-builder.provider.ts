@@ -2,18 +2,13 @@ import {
   BindingScope,
   Provider,
   ValueOrPromise,
-  inject,
   injectable,
 } from "@loopback/core";
-import { AmqBusBindings } from "../lib/keys";
-import { AmqBusLogAdapter, ResponseBuilder } from "../lib/types";
+import { ResponseBuilder } from "../lib/types";
 
 @injectable({ scope: BindingScope.APPLICATION })
 export class ResponseBuilderProvider implements Provider<ResponseBuilder> {
-  constructor(
-    @inject(AmqBusBindings.LOG_ADAPTER)
-    private logAdapter: AmqBusLogAdapter,
-  ) {} //
+  constructor() {} //
 
   private buildResponse(requestBody: string): ValueOrPromise<string | void> {
     // this.logAdapter.

@@ -1,4 +1,5 @@
 import { BindingAddress, BindingKey, CoreBindings } from "@loopback/core";
+import { AmqBusComponent } from "..";
 import {
   AmqBusClient,
   AmqBusLogAdapter,
@@ -10,6 +11,7 @@ import {
   AmqConnector,
   ErrorHandler,
   ResponseBuilder,
+  ServerContextFactory,
 } from "./types";
 
 function createKey(name?: string) {
@@ -28,7 +30,7 @@ function create<T>(name?: string) {
  */
 
 export module AmqBusBindings {
-  export const COMPONENT = create();
+  export const COMPONENT = create<AmqBusComponent>();
 
   export const CONFIG: BindingAddress<AmqBusOptions> =
     BindingKey.buildKeyForConfig<AmqBusOptions>(COMPONENT);
@@ -43,6 +45,10 @@ export module AmqBusBindings {
 
   export const CONSUMER_SERVER_FACTORY = create<AmqBusServerFactory>(
     "consumerServerFactory",
+  );
+
+  export const SERVER_CONTEXT_FACTORY = create<ServerContextFactory>(
+    "serverContextFactory",
   );
 
   export const RESPONSE_BUILDER = create<ResponseBuilder>("responseBuilder");

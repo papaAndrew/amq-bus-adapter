@@ -6,9 +6,9 @@ export class ConsumerServer implements AmqBusServer {
 
   constructor(
     private connector: AmqConnector,
+    private options: ConsumerOptions,
     private onMessage: (ctx: any) => void,
     private errorHandler: (err?: any) => void,
-    private options: ConsumerOptions,
   ) {}
 
   createReceiver(topic: string): Receiver | undefined {

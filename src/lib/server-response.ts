@@ -29,6 +29,10 @@ export class ServerResponse implements AmqBusServerResponse {
     private buildResponse?: BuildResponseFunction,
   ) {}
 
+  public get outcomingMessage(): AmqMessage {
+    return this._outcomingMessage;
+  }
+
   async produce(incomingMessage: AmqMessage) {
     this._outcomingMessage = {
       messageId: genUuid4(),
@@ -43,7 +47,7 @@ export class ServerResponse implements AmqBusServerResponse {
       return;
     }
     if (resposeBody) {
-      this.send(resposeBody);
+      await this.send(resposeBody);
     }
   }
 
