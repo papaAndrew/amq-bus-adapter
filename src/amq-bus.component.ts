@@ -87,8 +87,14 @@ export class AmqBusComponent implements Component, LifeCycleObserver {
         this._logAdapter.onConnect(this._connector.config);
       })
       .catch((err) => {
-        this._logAdapter.onError("Connector exception", err);
-        this._errorHandler(err);
+        // this._logAdapter.onError("Connector exception", err);
+        const cause = JSON.stringify(err);
+        this._errorHandler({
+          sender: AmqBusComponent.name,
+          targret: "AmqConnector",
+          event: "connect",
+          cause,
+        });
       });
   }
 
