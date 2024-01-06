@@ -1,4 +1,3 @@
-import { describe } from "@jest/globals";
 import { AmqbLogAdapter } from "../lib/amqb-log-adapter";
 import { AmqpConnector } from "../lib/amqp-connector";
 import { ProducerClient } from "../lib/producer-client";
@@ -8,7 +7,7 @@ import { CONNECION_OPTIONS } from "./helpers";
 
 const TOPIC_REQUEST = "AMQADAPTER.TEST.OUT";
 
-describe.skip("AmqBusProducer", () => {
+describe("AmqBusProducer", () => {
   let connector: AmqConnector;
 
   beforeAll(async () => {
