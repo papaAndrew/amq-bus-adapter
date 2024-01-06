@@ -1,5 +1,9 @@
-import { BindingAddress, BindingKey, CoreBindings } from "@loopback/core";
-import { AmqBusComponent } from "..";
+import {
+  BindingAddress,
+  BindingKey,
+  Component,
+  CoreBindings,
+} from "@loopback/core";
 import {
   AmqBusClient,
   AmqBusLogAdapter,
@@ -30,7 +34,7 @@ function create<T>(name?: string) {
  */
 
 export module AmqBusBindings {
-  export const COMPONENT = create<AmqBusComponent>();
+  export const COMPONENT = create<Component>();
 
   export const CONFIG: BindingAddress<AmqBusOptions> =
     BindingKey.buildKeyForConfig<AmqBusOptions>(COMPONENT);
