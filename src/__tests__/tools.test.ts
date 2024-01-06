@@ -5,7 +5,7 @@ import { waitFor } from "../lib/tools";
 const TIMEOUT = 3000;
 const INTERVAL = 1;
 
-describe.skip("Tools", () => {
+describe("Tools", () => {
   it("Binding module", async () => {
     expect(AmqBusBindings.COMPONENT).toMatchObject({
       key: "components.AmqBusComponent",

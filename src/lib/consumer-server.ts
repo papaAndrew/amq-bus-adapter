@@ -1,5 +1,10 @@
 import { Receiver, ReceiverOptions, filter } from "rhea";
-import { AmqBusServer, AmqConnector, ConsumerOptions } from "./types";
+import {
+  AmqBusServer,
+  AmqConnector,
+  ConsumerOptions,
+  ErrorHandler,
+} from "./types";
 
 export class ConsumerServer implements AmqBusServer {
   private receiver?: Receiver;
@@ -8,7 +13,7 @@ export class ConsumerServer implements AmqBusServer {
     private connector: AmqConnector,
     private options: ConsumerOptions,
     private onMessage: (ctx: any) => void,
-    private errorHandler: (err?: any) => void,
+    private errorHandler: ErrorHandler,
   ) {}
 
   createReceiver(topic: string): Receiver | undefined {
@@ -23,7 +28,12 @@ export class ConsumerServer implements AmqBusServer {
     try {
       receiver = this.connector.createReceiver(receiverOptions);
     } catch (err) {
-      this.errorHandler(err);
+      this.errorHandler({
+        sender: ConsumerServer.name,
+        targret: "AmqConnector",
+        event: "createReceiver",
+        cause: JSON.stringify(err),
+      });
     }
     return receiver;
   }
@@ -35,8 +45,15 @@ export class ConsumerServer implements AmqBusServer {
       this.receiver.on("message", this.onMessage.bind(this));
 
       this.receiver.on("receiver_error", (receiver) => {
-        const cause = receiver.error ?? `Receiver unknown error`;
-        this.errorHandler(new Error(cause));
+        const cause = receiver
+          ? JSON.stringify(receiver)
+          : `Receiver unknown error`;
+        this.errorHandler({
+          sender: ConsumerServer.name,
+          targret: "Receiver",
+          event: "receiver_error",
+          cause,
+        });
       });
     }
   }

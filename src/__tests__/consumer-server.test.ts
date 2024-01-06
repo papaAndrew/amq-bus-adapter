@@ -11,7 +11,7 @@ import { CONNECION_OPTIONS } from "./helpers";
 
 const TOPIC = "AMQADAPTER.TEST.IN";
 
-describe.skip("ConsumerServer", () => {
+describe("ConsumerServer", () => {
   let connector: AmqConnector;
   let client: ProducerClient;
 
