@@ -1,6 +1,6 @@
 import { BindingScope, Provider, inject, injectable } from "@loopback/core";
 import { exit } from "process";
-import { AmqBusBindings } from "..";
+import { AmqBusBindings } from "../lib/keys";
 import { AmqBusLogAdapter, ErrorHandler } from "../lib/types";
 
 @injectable({ scope: BindingScope.SINGLETON })
