@@ -23,6 +23,7 @@ import { AmqBusServerFactoryProvider } from "./providers/amq-bus-server-factory.
 import { AmqConnectorProvider } from "./providers/amq-connector.provider";
 import { FatalErrorHandlerProvider } from "./providers/fatal-error-handler.provider";
 import { ResponseBuilderProvider } from "./providers/response-builder.provider";
+import { ServerContextFactoryProvider } from "./providers/server-context-factory.provider";
 
 @injectable({ tags: { [ContextTags.KEY]: AmqBusBindings.COMPONENT } })
 export class AmqBusComponent implements Component, LifeCycleObserver {
@@ -39,6 +40,9 @@ export class AmqBusComponent implements Component, LifeCycleObserver {
     Binding.bind(AmqBusBindings.PRODUCER_CLIENT)
       .toProvider(AmqBusClientProvider)
       .inScope(BindingScope.REQUEST),
+    Binding.bind(AmqBusBindings.SERVER_CONTEXT_FACTORY)
+      .toProvider(ServerContextFactoryProvider)
+      .inScope(BindingScope.SINGLETON),
     Binding.bind(AmqBusBindings.CONSUMER_SERVER_FACTORY)
       .toProvider(AmqBusServerFactoryProvider)
       .inScope(BindingScope.SINGLETON),
