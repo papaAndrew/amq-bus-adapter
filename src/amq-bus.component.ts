@@ -7,7 +7,7 @@ import {
   injectable,
   LifeCycleObserver,
 } from "@loopback/core";
-import {AmqBusBindings} from "./lib/keys";
+import { AmqBusBindings } from "./lib/keys";
 import {
   AmqBusLogAdapter,
   AmqBusOptions,
@@ -17,15 +17,15 @@ import {
   ErrorHandler,
   ResponseBuilder,
 } from "./lib/types";
-import {AmqBusClientProvider} from "./providers/amq-bus-client.provider";
-import {AmqBusLogAdapterProvider} from "./providers/amq-bus-log-adapter.provider";
-import {AmqBusServerFactoryProvider} from "./providers/amq-bus-server-factory.provider";
-import {AmqConnectorProvider} from "./providers/amq-connector.provider";
-import {FatalErrorHandlerProvider} from "./providers/fatal-error-handler.provider";
-import {ResponseBuilderProvider} from "./providers/response-builder.provider";
-import {ServerContextFactoryProvider} from './providers/server-context-factory.provider';
+import { AmqBusClientProvider } from "./providers/amq-bus-client.provider";
+import { AmqBusLogAdapterProvider } from "./providers/amq-bus-log-adapter.provider";
+import { AmqBusServerFactoryProvider } from "./providers/amq-bus-server-factory.provider";
+import { AmqConnectorProvider } from "./providers/amq-connector.provider";
+import { FatalErrorHandlerProvider } from "./providers/fatal-error-handler.provider";
+import { ResponseBuilderProvider } from "./providers/response-builder.provider";
+import { ServerContextFactoryProvider } from "./providers/server-context-factory.provider";
 
-@injectable({tags: {[ContextTags.KEY]: AmqBusBindings.COMPONENT}})
+@injectable({ tags: { [ContextTags.KEY]: AmqBusBindings.COMPONENT } })
 export class AmqBusComponent implements Component, LifeCycleObserver {
   bindings: Binding<any>[] = [
     Binding.bind(AmqBusBindings.FATAL_ERROR_HANDLER)
@@ -112,7 +112,7 @@ export class AmqBusComponent implements Component, LifeCycleObserver {
 
   private async disconnect() {
     this._connector.disconnect();
-    this._logAdapter.onDisconnect({cause: "Component stopped"});
+    this._logAdapter.onDisconnect({ cause: "Component stopped" });
   }
 
   async start() {
