@@ -7,6 +7,7 @@ import {
   AmqConnector,
   ConsumerOptions,
   ErrorHandler,
+  ReceiverMessageFunction,
   ServerContextFactory,
 } from "../lib/types";
 
@@ -25,23 +26,24 @@ export class AmqBusServerFactoryProvider
     private contextFactory: ServerContextFactory,
   ) {}
 
-  private async getOnMessage(
+  private getReceiverMessageFunction(
     options: ConsumerOptions,
-  ): Promise<OnMessageFunction> {
-    const context = await this.contextFactory.createContext(options);
-    const onMessage = context.onReceiverMessage.bind(context);
-    return onMessage;
+  ): ReceiverMessageFunction {
+    return async (ctx: any) =>
+      this.contextFactory
+        .createContext(options)
+        .then(async (context) => context.onReceiverMessage(ctx));
   }
 
-  private async createServer(options: ConsumerOptions): Promise<AmqBusServer> {
+  private createServer(options: ConsumerOptions): AmqBusServer {
     const { connector, errorHandler } = this;
 
-    const onMessage = await this.getOnMessage(options);
+    const receiverMessageFunction = this.getReceiverMessageFunction(options);
 
     const server = new ConsumerServer(
       connector,
       options,
-      onMessage,
+      receiverMessageFunction,
       errorHandler,
     );
 

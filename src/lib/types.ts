@@ -180,6 +180,20 @@ export interface AmqBusClientRequest extends AmqBusRequestConfig {
 }
 
 /**
+ * Обработчик фатальных ошибок
+ */
+export type ErrorHandler = (err?: any) => void;
+/**
+ * События Сервера
+ */
+export type ReceiverMessageFunction = (
+  receiverContext: any,
+) => ValueOrPromise<void>;
+export type AmqMessageFunction = (
+  amqMessage: AmqMessage,
+) => ValueOrPromise<void>;
+
+/**
  * Интерфейс Сервера (Consumer)
  */
 export interface AmqBusServer {
@@ -246,11 +260,6 @@ export interface ResponseBuilder {
 }
 
 /**
- * Обработчик фатальных ошибок
- */
-export type ErrorHandler = (err?: any) => void;
-
-/**
  * Технологические интерфейсы
  */
 /**
@@ -266,8 +275,6 @@ export interface AmqBusLogAdapter {
   onServerRequest(consumeMsgResult: ConsumeMsgResult): ValueOrPromise<void>;
   onServerResponse(produceMsgResult: ProduceMsgResult): ValueOrPromise<void>;
 }
-
-export type SendResponseFunction = (amqMessage: AmqMessage) => Promise<void>;
 
 export interface AmqConnector {
   readonly config: any;
