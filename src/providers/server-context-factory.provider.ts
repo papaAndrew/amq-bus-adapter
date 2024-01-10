@@ -42,7 +42,9 @@ export class ServerContextFactoryProvider
   private async getBuildResponseFunc(): Promise<
     BuildResponseFunction | undefined
   > {
-    return this.responseBuilderGetter().then((buider) => buider.buildResponse);
+    return this.responseBuilderGetter().then((buider) =>
+      buider.buildResponse.bind(buider),
+    );
   }
 
   private async createResponse(
@@ -63,6 +65,7 @@ export class ServerContextFactoryProvider
     options: ConsumerOptions,
   ): Promise<ServerContext> {
     const request = this.createRequest(options);
+
     const response = await this.createResponse(options);
 
     const context = new ServerContext(request, response, this.parentContext);

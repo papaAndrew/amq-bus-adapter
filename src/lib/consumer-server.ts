@@ -4,24 +4,26 @@ import {
   AmqConnector,
   ConsumerOptions,
   ErrorHandler,
+  ReceiverMessageFunction,
 } from "./types";
 
 export class ConsumerServer implements AmqBusServer {
-  private receiver?: Receiver;
+  receiver?: Receiver;
 
   constructor(
     private connector: AmqConnector,
     private options: ConsumerOptions,
-    private onMessage: (ctx: any) => void,
+    private receiverMessageFunction: ReceiverMessageFunction,
     private errorHandler: ErrorHandler,
   ) {}
 
-  createReceiver(topic: string): Receiver | undefined {
+  createReceiver(topic: string, timeout?: number): Receiver | undefined {
     let receiver: Receiver | undefined;
     const receiverOptions: ReceiverOptions = {
       source: {
         address: topic,
         filter: filter.selector(`JMSCorrelationID is null`),
+        timeout,
       },
     };
 
@@ -39,10 +41,11 @@ export class ConsumerServer implements AmqBusServer {
   }
 
   public start() {
-    this.receiver = this.createReceiver(this.options.topic);
+    const { timeout, topic } = this.options;
+    this.receiver = this.createReceiver(topic, timeout && Number(timeout));
 
     if (this.receiver) {
-      this.receiver.on("message", this.onMessage.bind(this));
+      this.receiver.on("message", this.receiverMessageFunction.bind(this));
 
       this.receiver.on("receiver_error", (receiver) => {
         const cause = receiver
