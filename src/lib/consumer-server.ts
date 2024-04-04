@@ -1,4 +1,4 @@
-import { Receiver, ReceiverOptions, filter } from "rhea";
+import { Receiver, ReceiverOptions } from "rhea";
 import {
   AmqBusServer,
   AmqConnector,
@@ -22,7 +22,6 @@ export class ConsumerServer implements AmqBusServer {
     const receiverOptions: ReceiverOptions = {
       source: {
         address: topic,
-        filter: filter.selector(`JMSCorrelationID is null`),
         timeout,
       },
     };
