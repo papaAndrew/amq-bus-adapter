@@ -1,10 +1,10 @@
-import {Receiver, ReceiverOptions} from "rhea";
+import { Receiver, ReceiverOptions } from "rhea";
 import {
   AmqBusServer,
   AmqConnector,
   ConsumerOptions,
   ErrorHandler,
-  ReceiverMessageFunction
+  ReceiverMessageFunction,
 } from "./types";
 
 export class ConsumerServer implements AmqBusServer {
@@ -15,7 +15,7 @@ export class ConsumerServer implements AmqBusServer {
     private options: ConsumerOptions,
     private receiverMessageFunction: ReceiverMessageFunction,
     private errorHandler: ErrorHandler,
-  ) { }
+  ) {}
 
   createReceiver(topic: string, timeout?: number): Receiver | undefined {
     let receiver: Receiver | undefined;
@@ -40,7 +40,7 @@ export class ConsumerServer implements AmqBusServer {
   }
 
   public start() {
-    const {timeout, topic} = this.options;
+    const { timeout, topic } = this.options;
     this.receiver = this.createReceiver(topic, timeout && Number(timeout));
 
     if (this.receiver) {
