@@ -1,10 +1,16 @@
-import { CoreBindings, Provider, inject, injectable } from "@loopback/core";
+import {
+  BindingScope,
+  CoreBindings,
+  Provider,
+  inject,
+  injectable,
+} from "@loopback/core";
 import { AmqbLogAdapter, ApiLogAdapter } from "../lib/amqb-log-adapter";
-import { AmqBusLogAdapter } from "../lib/types";
+import { AmqBusLogAdapter } from "./types";
 
 export const MESSAGE_LOG_ADAPTER = `${CoreBindings.COMPONENTS}.ApiLogAdapterComponent.MessageLogAdapter`;
 
-@injectable()
+@injectable({ scope: BindingScope.TRANSIENT })
 export class AmqBusLogAdapterProvider implements Provider<AmqBusLogAdapter> {
   private adapter: AmqBusLogAdapter;
 

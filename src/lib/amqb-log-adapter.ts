@@ -1,10 +1,6 @@
-import { injectable } from "@loopback/core";
-import {
-  AmqBusLogAdapter,
-  AmqMessage,
-  ConsumeMsgResult,
-  ProduceMsgResult,
-} from "./types";
+import { ValueOrPromise, injectable } from "@loopback/core";
+import { headersToString } from "./tools";
+import { AmqBusLogAdapter, AmqMessage, OperationResult } from "./types";
 
 const HIDDEN_ALTERNATE = "{*hidden}";
 const EMPTY_ALTERNATE = "{*empty}";
@@ -27,6 +23,10 @@ export interface ApiLogAdapter {
   http(eventName: string, message: string, args: object): void;
 }
 
+interface Metadata extends Omit<AmqMessage, "headers" | "data"> {
+  headers?: string;
+}
+
 @injectable()
 export class AmqbLogAdapter implements AmqBusLogAdapter {
   showContent = false;
@@ -38,51 +38,68 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
       this.showContent = showBody === true || showBody === "true";
     }
   }
+
+  onConnectionError(ctx: any): ValueOrPromise<void> {
+    const eventName = "AmqpConnectionError";
+    const message = "AMQP Connector lost connection";
+    this.apiLogAdapter?.info(eventName, message, { context: ctx });
+  }
+
+  public set sender(name: string) {
+    this.apiLogAdapter.sender = name;
+  }
+
   onConnect(metadata: any) {
     const eventName = "AmqBusConnected";
-    const message = "AMQ Connector connected";
+    const message = "AMQP Connector connected";
     const { ca, ...options } = metadata;
     const connection = {
       ...options,
       ca: ca && ca.toString().substring(0, 64) + " ...",
     };
-    this.apiLogAdapter?.info(eventName, message, { connection });
+    this.apiLogAdapter?.info(eventName, message, { connection: connection });
   }
 
   onDisconnect(metadata: object) {
     const eventName = "AmqBusDisconnected";
-    const message = "AMQ Connector disconnected";
-    this.apiLogAdapter?.info(eventName, message, { metadata });
+    const message = "AMQP Connector disconnected";
+    this.apiLogAdapter?.info(eventName, message, { metadata: metadata });
   }
 
   onConsumerOpen(metadata: object) {
-    const eventName = "AmqConsumerOpen";
-    const message = "AMQ Consumer opened";
-    this.apiLogAdapter?.info(eventName, message, { metadata });
+    const eventName = "JmsConsumerOpen";
+    const message = "AMQP Consumer Open Success";
+    this.apiLogAdapter?.info(eventName, message, { metadata: metadata });
+  }
+
+  onProducerOpen(metadata: any) {
+    const eventName = "AmqpProducerOpen";
+    const message = "AMQP Producer Open Success";
+    this.apiLogAdapter?.info(eventName, message, { metadata: metadata });
   }
 
   protected printData(eventName: string, message: string, data: any) {
-    if (this.apiLogAdapter) {
-      let result = (data ?? EMPTY_ALTERNATE) || EMPTY_ALTERNATE;
-      result = this.showContent
-        ? this.apiLogAdapter.dataToString(data)
-        : HIDDEN_ALTERNATE;
-      this.apiLogAdapter.onMessage(eventName, message, result);
-    }
+    let result = (data ?? EMPTY_ALTERNATE) || EMPTY_ALTERNATE;
+    result = this.showContent
+      ? this.apiLogAdapter.dataToString(data)
+      : HIDDEN_ALTERNATE;
+    this.apiLogAdapter?.onMessage(eventName, message, result);
   }
   protected async printMetaData(
     eventName: string,
     message: string,
     metadata: object,
   ) {
-    if (this.apiLogAdapter) {
-      this.apiLogAdapter.info(eventName, message, metadata);
-    }
+    this.apiLogAdapter?.info(eventName, message, metadata);
   }
 
-  trapMessage(message?: AmqMessage) {
+  private formatMessage(message?: AmqMessage) {
     if (message) {
-      const { data, ...metadata } = message;
+      const { data, headers, ...md } = message;
+      const metadata: Metadata = {
+        ...md,
+        headers: headers && headersToString(headers),
+      };
       return {
         metadata,
         data,
@@ -90,7 +107,7 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
     }
   }
 
-  trapError(err?: any) {
+  private formatError(err?: any) {
     if (err) {
       const { name, message, stack } = err;
       return {
@@ -101,13 +118,13 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
     }
   }
 
-  onServerRequest(consumeMsgResult: ConsumeMsgResult) {
-    const eventName = "AmqBusServerRequest";
-    const baseMessage = "Server request";
+  onConsumerRequest(operationResult: OperationResult) {
+    const eventName = "JmsConsumerRequest";
+    const baseMessage = "Consumer request";
 
-    const { message, cause, ...result } = consumeMsgResult;
-    const msg = this.trapMessage(message);
-    const err = this.trapError(cause);
+    const { message, cause, ...result } = operationResult;
+    const msg = this.formatMessage(message);
+    const err = this.formatError(cause);
     const metadata = {
       ...result,
       ...msg?.metadata,
@@ -119,13 +136,13 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
     }
   }
 
-  onServerResponse(produceMsgResult: ProduceMsgResult) {
-    const eventName = "AmqBusServerResponse";
-    const baseMessage = "Server request response";
+  onConsumerResponse(operationResult: OperationResult) {
+    const eventName = "JmsConsumerResponse";
+    const baseMessage = "Consumer request response";
 
-    const { message, cause, ...result } = produceMsgResult;
-    const msg = this.trapMessage(message);
-    const err = this.trapError(cause);
+    const { message, cause, ...result } = operationResult;
+    const msg = this.formatMessage(message);
+    const err = this.formatError(cause);
     const metadata = {
       ...result,
       ...msg?.metadata,
@@ -138,13 +155,13 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
     }
   }
 
-  onClientRequest(produceMsgResult: ProduceMsgResult) {
-    const eventName = "AmqBusClientRequest";
-    const baseMessage = "Client request";
+  onProducerRequest(operationResult: OperationResult) {
+    const eventName = "JmsProducerRequest";
+    const baseMessage = "Producer request";
 
-    const { message, cause, ...result } = produceMsgResult;
-    const msg = this.trapMessage(message);
-    const err = this.trapError(cause);
+    const { message, cause, ...result } = operationResult;
+    const msg = this.formatMessage(message);
+    const err = this.formatError(cause);
     const metadata = {
       ...result,
       ...msg?.metadata,
@@ -157,13 +174,13 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
     }
   }
 
-  onClientResponse(consumeMsgResult: ConsumeMsgResult) {
-    const eventName = "AmqBusClientResponse";
-    const baseMessage = "Client request response";
+  onProducerResponse(operationResult: OperationResult) {
+    const eventName = "JmsProducerResponse";
+    const baseMessage = "Producer request response";
 
-    const { message, cause, ...result } = consumeMsgResult;
-    const msg = this.trapMessage(message);
-    const err = this.trapError(cause);
+    const { message, cause, ...result } = operationResult;
+    const msg = this.formatMessage(message);
+    const err = this.formatError(cause);
     const metadata = {
       ...result,
       ...msg?.metadata,
@@ -177,11 +194,60 @@ export class AmqbLogAdapter implements AmqBusLogAdapter {
   }
 
   onError(message: string, err: any) {
-    const eventName = "AmqBusError";
+    const eventName = "JmsCommonError";
     const error_description = {
       cause: err.message,
       stack: err.stack,
     };
     this.printMetaData(eventName, message, { error_description });
+  }
+
+  onSenderError(ctx: any): ValueOrPromise<void> {
+    const eventName = "JmsSenderError";
+
+    if (typeof ctx === "string") {
+      const message = ctx;
+      const error_description = {
+        cause: ctx,
+      };
+      this.printMetaData(eventName, message, { error_description });
+    } else {
+      const message = ctx.message;
+      const error_description = {
+        cause: ctx.message,
+        stack: ctx.stack,
+      };
+      this.printMetaData(eventName, message, { error_description });
+    }
+  }
+
+  onReceiverError(ctx: any): ValueOrPromise<void> {
+    const eventName = "JmsReceiverError";
+
+    if (typeof ctx === "string") {
+      const message = ctx;
+      const error_description = {
+        cause: ctx,
+      };
+      this.printMetaData(eventName, message, { error_description });
+    } else {
+      const message = ctx.message;
+      const error_description = {
+        cause: ctx.message,
+        stack: ctx.stack,
+      };
+      this.printMetaData(eventName, message, { error_description });
+    }
+  }
+
+  onReceiverMessage(ctx: any) {
+    const eventName = "JmsProducerReceiverMessage";
+    const baseMessage = "Producer Reply Receiver message";
+
+    this.apiLogAdapter?.info(
+      eventName,
+      `${baseMessage} RECEIVED`,
+      ctx as object,
+    );
   }
 }

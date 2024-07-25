@@ -1,36 +1,43 @@
 import { describe } from "@jest/globals";
+import { ConnectionOptions } from "rhea";
 import { AmqpConnector } from "../lib/amqp-connector";
 import { AmqConnector } from "../lib/types";
-import { CONNECION_OPTIONS } from "./helpers";
 
 const TOPIC_SENDER = "AMQADAPTER.TEST.OUT";
+
+const CONNECTION_OPTIONS: ConnectionOptions = {
+  host: "esb-dev01-t",
+  port: 5672,
+  username: "amqp",
+  password: "amqp",
+};
 
 describe("AmqConnector", () => {
   let connector: AmqConnector;
 
-  beforeAll(() => {
-    connector = new AmqpConnector(CONNECION_OPTIONS);
+  beforeAll(async () => {
+    // console.log("CONNECTION_OPTIONS", CONNECTION_OPTIONS);
+    connector = new AmqpConnector(CONNECTION_OPTIONS);
+    await connector.connect();
   });
 
-  afterAll(() => {
-    connector.disconnect();
+  beforeEach(async () => {
+    await connector.connect();
   });
+  afterEach(async () => {
+    await connector.disconnect();
+  });
+  // afterAll(async () => {
+  //   await connector.disconnect();
+  // });
 
-  it("AmqConnector connect and diconnect", async () => {
-    await connector
-      .connect()
-      .then(() => {
-        expect(connector.isConnected()).toBe(true);
-      })
-      .then(() => {
-        connector.disconnect();
-        expect(connector.isConnected()).toBe(false);
-      })
-      .catch((err) => console.log("Exception:", err.message));
+  it("AmqConnector connect and disconnect", async () => {
+    expect(connector.isConnected()).toBeTruthy();
+    await connector.disconnect();
+    expect(connector.isConnected()).toBeFalsy();
   });
 
   it("AmqConnector create Sender with topic", async () => {
-    await connector.connect();
     const sender = connector.createSender(TOPIC_SENDER);
     // console.log("sender.options", sender.options);
 
@@ -38,10 +45,7 @@ describe("AmqConnector", () => {
   });
 
   it("AmqConnector create Receiver with topic", async () => {
-    await connector.connect();
-
     const receiver = connector.createReceiver(TOPIC_SENDER);
-    // console.log("receiver.options", receiver.options);
 
     expect(receiver.options["source"].address).toBe(TOPIC_SENDER);
   });
