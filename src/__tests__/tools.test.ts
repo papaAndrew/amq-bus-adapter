@@ -1,6 +1,6 @@
 import { describe } from "@jest/globals";
 import { AmqBusBindings } from "../lib/keys";
-import { waitFor } from "../lib/tools";
+import { getConnectionDetails, waitFor } from "../lib/tools";
 
 const TIMEOUT = 3000;
 const INTERVAL = 1;
@@ -44,5 +44,29 @@ describe("Tools", () => {
 
     expect(delta).toBeGreaterThan(0);
     expect(delta).toBeLessThan(diver);
+  });
+
+  it("getConnectionDetails", () => {
+    const brokers = "host1:1111,host2:2222";
+
+    const connectionDetails = getConnectionDetails(brokers);
+
+    const cd1 = connectionDetails(0);
+    expect(cd1).toMatchObject({
+      host: "host1",
+      port: 1111,
+    });
+
+    const cd2 = connectionDetails(0);
+    expect(cd2).toMatchObject({
+      host: "host2",
+      port: 2222,
+    });
+
+    const cd3 = connectionDetails(0);
+    expect(cd3).toMatchObject({
+      host: "host1",
+      port: 1111,
+    });
   });
 });

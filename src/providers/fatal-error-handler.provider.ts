@@ -1,7 +1,6 @@
 import { BindingScope, Provider, inject, injectable } from "@loopback/core";
 import { exit } from "process";
-import { AmqBusBindings } from "../lib/keys";
-import { AmqBusLogAdapter, ErrorHandler } from "../lib/types";
+import { AmqBusBindings, AmqBusLogAdapter, ErrorHandler } from "./types";
 
 @injectable({ scope: BindingScope.SINGLETON })
 export class FatalErrorHandlerProvider implements Provider<ErrorHandler> {
@@ -13,7 +12,7 @@ export class FatalErrorHandlerProvider implements Provider<ErrorHandler> {
   private onError(err: any) {
     // console.log("fatal error", JSON.stringify(err));
 
-    this.logAdapter.onError("Fatal Error Exception", err);
+    this.logAdapter.onError("Fatal Error Exception. Reboot...", err);
 
     exit(1);
   }

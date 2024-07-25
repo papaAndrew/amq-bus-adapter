@@ -8,7 +8,7 @@ import {
   SenderOptions,
   create_container,
 } from "rhea";
-import { AmqConnector } from "./types";
+import { AmqBusLogAdapter, AmqConnector, ErrorHandler } from "./types";
 
 /**
  *
@@ -18,7 +18,49 @@ export class AmqpConnector implements AmqConnector {
 
   private container: Container = create_container();
 
-  constructor(readonly config: ConnectionOptions) {}
+  private _errorHandler?: ErrorHandler;
+
+  public setErrorHandler(errorHandler: ErrorHandler) {
+    this._errorHandler = errorHandler;
+  }
+
+  private logAdapter?: AmqBusLogAdapter;
+
+  public setLogAdapter(logAdapter: AmqBusLogAdapter) {
+    this.logAdapter = logAdapter;
+  }
+
+  constructor(readonly config: ConnectionOptions) {
+    this.container
+      .on("error", this.onConnectionError.bind(this))
+      .on("connection_error", this.onConnectionError.bind(this));
+  }
+
+  private onConnectionError(err: any) {
+    this.logAdapter?.onConnectionError(err);
+    this._errorHandler?.(err);
+  }
+
+  private onDisconnected(ctx: any) {
+    if (ctx.reconnecting) {
+      return;
+    }
+    if (ctx.error) {
+      // this.onConnectionClose(ctx.error);
+      this.onConnectionError(ctx.error);
+    }
+  }
+
+  private onConnectionOpen() {
+    // this.connection
+    //   .on('disconnected', this.onDisconnected.bind(this))
+    this.logAdapter?.onConnect({ config: this.config });
+  }
+
+  private onConnectionClose(ctx?: any) {
+    this.connection = undefined;
+    this.logAdapter?.onDisconnect(ctx);
+  }
 
   public isConnected(): boolean {
     return !!this.connection && this.connection.is_open();
@@ -30,7 +72,8 @@ export class AmqpConnector implements AmqConnector {
         .connect(<ConnectionOptions>options)
         .on("connection_open", resolve)
         .on("connection_error", reject)
-        .on("error", reject);
+        .on("error", reject)
+        .on("disconnected", this.onDisconnected.bind(this));
     });
   }
   protected getConnection(): Connection {
@@ -42,22 +85,32 @@ export class AmqpConnector implements AmqConnector {
 
   public async connect() {
     if (this.isConnected()) {
-      this.disconnect();
+      return;
     }
 
     if (this.config) {
-      return this.justConnect(this.config).catch((err) => {
-        throw err.error;
-      });
+      return this.justConnect(this.config)
+        .then(this.onConnectionOpen.bind(this))
+        .catch(this.onConnectionError.bind(this));
     }
 
-    throw new Error(`Connection options undefined`);
+    this.onConnectionError(new Error(`Connection options undefined`));
   }
 
-  public disconnect() {
-    if (this.isConnected()) {
-      this.connection?.close();
-    }
+  public async disconnect() {
+    return new Promise<void>((resolve) => {
+      if (this.isConnected()) {
+        this.connection
+          .on("connection_close", () => {
+            this.onConnectionClose(true);
+            resolve();
+          })
+          .close();
+      } else {
+        this.onConnectionClose(false);
+        resolve();
+      }
+    });
   }
 
   createSender(options: string | SenderOptions): Sender {

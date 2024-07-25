@@ -5,17 +5,13 @@ import {
   CoreBindings,
 } from "@loopback/core";
 import {
-  AmqBusClient,
   AmqBusLogAdapter,
   AmqBusOptions,
-  AmqBusServerContext,
-  AmqBusServerFactory,
-  AmqBusServerRequest,
-  AmqBusServerResponse,
   AmqConnector,
+  ConsumerResultHandler,
   ErrorHandler,
-  ResponseBuilder,
-  ServerContextFactory,
+  Pluggable,
+  ProducerRequest,
 } from "./types";
 
 function createKey(name?: string) {
@@ -39,27 +35,24 @@ export module AmqBusBindings {
   export const CONFIG: BindingAddress<AmqBusOptions> =
     BindingKey.buildKeyForConfig<AmqBusOptions>(COMPONENT);
 
-  export const FATAL_ERROR_HANDLER = create<ErrorHandler>("fatalErrorHandler");
+  export const FATAL_ERROR_HANDLER = create<ErrorHandler>(
+    "fatal-error-handler",
+  );
 
-  export const LOG_ADAPTER = create<AmqBusLogAdapter>("logAdapter");
+  export const LOG_ADAPTER = create<AmqBusLogAdapter>("log-adapter");
 
   export const CONNECTOR = create<AmqConnector>("connector");
 
-  export const PRODUCER_CLIENT = create<AmqBusClient>("producerClient");
+  export const PRODUCER = create<Pluggable>("producer");
 
-  export const CONSUMER_SERVER_FACTORY = create<AmqBusServerFactory>(
-    "consumerServerFactory",
-  );
+  export const PRODUCER_REQUEST = create<ProducerRequest>("producer-request");
 
-  export const SERVER_CONTEXT_FACTORY = create<ServerContextFactory>(
-    "serverContextFactory",
-  );
+  export const CONSUMER = create<Pluggable>("consumer");
 
-  export const RESPONSE_BUILDER = create<ResponseBuilder>("responseBuilder");
+  export const CONSUMER_REQUEST =
+    create<ConsumerResultHandler>("consumer-request");
 
-  export const Server = {
-    CONTEXT: create<AmqBusServerContext>("server.context"),
-    REQUEST: create<AmqBusServerRequest>("server.request"),
-    RESPONSE: create<AmqBusServerResponse>("server.response"),
-  };
+  export const BACKOUT_PRODUCER = create<Pluggable>("backout-producer");
+
+  export const BACKOUT_REQUEST = create<Pluggable>("backout-request");
 }
