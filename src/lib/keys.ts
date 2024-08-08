@@ -29,7 +29,7 @@ function create<T>(name?: string) {
  * Binding keys used by this component.
  */
 
-export module AmqBusBindings {
+export namespace AmqBusBindings {
   export const COMPONENT = create<Component>();
 
   export const CONFIG: BindingAddress<AmqBusOptions> =

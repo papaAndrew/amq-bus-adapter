@@ -1,4 +1,4 @@
-import { Context, ValueOrPromise } from "@loopback/core";
+import { ValueOrPromise } from "@loopback/core";
 import {
   ConnectionDetails,
   Message,
@@ -284,7 +284,7 @@ export interface AmqbServerRequest {
 //   response?: AmqbServerResponse;
 // }
 
-export interface AmqbRequestContext extends Context {}
+// export interface AmqbRequestContext extends Context {}
 
 /**
  * Функция обратного вызова (callback) для получения серверного сообщения
